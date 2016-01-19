@@ -1,3 +1,10 @@
+# File with private settings (passwords, etc.)
+util/settings.py
+
+#######################################################################################################################
+# Generic Python .gitignore's below
+#######################################################################################################################
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -57,3 +64,4 @@ docs/_build/
 
 # PyBuilder
 target/
+
