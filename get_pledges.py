@@ -36,28 +36,29 @@ def main(argv):
     parser.add_argument('--message-level', required=False, help="Either 'Info', 'Warning', or 'Error'. " +
         "Defaults to 'Warning' if unspecified. Log outputs greater or equal to specified severity are emitted " +
         "to message output.")
-    parser.add_argument('--message-output-file', required=False, help='Filename of message output file. If ' +
-                        'unspecified, defaults to stderr')
+    parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
+        'unspecified, defaults to stderr')
     g.args = parser.parse_args()
 
     logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 
     args_dict = vars(g.args)
-    if 'message_level' in args_dict:
+
+    if g.args.message_level is not None:
         if g.args.message_level not in ['Info', 'Warning', 'Error']:
-            logging.error("Specified message level '" + g.args.message_level +
+            logging.error("Specified message level '" + str(g.args.message_level) +
                 "' must be 'Info', 'Warning', or 'Error'")
             sys.exit(1)
         else:
-            message_level = g.args.message_level
+            message_level = str(g.args.message_level)
     else:
         message_level = 'Warning'
 
-    if 'message_output_file' in args_dict:
-        message_output_file = g.args.message_output_file
-        test_write(message_output_file)
+    if g.args.message_output_filename is not None:
+        message_output_filename = str(g.args.message_output_filename)
+        test_write(message_output_filename)
     else:
-        message_output_file = None
+        message_output_filename = None
 
     logging_map = {
         'Info': logging.INFO,
@@ -66,8 +67,8 @@ def main(argv):
     }
 
     logging.getLogger().setLevel(logging_map[message_level])
-    if message_output_file is not None:
-        logging.basicConfig(file=message_output_file, format='%(asctime)s:%(levelname)s:%(message)s',
+    if message_output_filename is not None:
+        logging.basicConfig(file=message_output_filename, format='%(asctime)s:%(levelname)s:%(message)s',
             datefmt='%Y-%m-%d %H:%M:%S')
 
     login_request = {
@@ -185,8 +186,12 @@ def main(argv):
                 dict_pledge_categories[root_str] = int(option_match.group(1))
 
         output_csv_header = None
-        test_write(g.args.output_file)
-        with open(g.args.output_file, 'wb') as csv_output_file:
+        if g.args.output_filename is not None:
+            output_filename = g.args.output_filename
+        else:
+            output_filename = './tmp/pledges_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
+        test_write(output_filename)
+        with open(output_filename, 'wb') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             for pledge_category in list_pledge_categories:
                 logging.info('Retrieving pledges for ' + pledge_category)
@@ -197,18 +202,18 @@ def main(argv):
                     pledge_detail_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
                         data=pledge_detail_request)
                     pledge_detail_succeeded = False
-                    if pledge_detail_response.status_code == 200:
+                    if pledge_detail_response.status_code == 200 and pledge_detail_response.text[:8] == 'Name(s),':
                         pledge_detail_succeeded = True
                         csv_reader = csv.reader(StringIO.StringIO(pledge_detail_response.text.encode('ascii',
                             'ignore')))
                         header_row = True
                         for row in csv_reader:
                             if header_row:
+                                header_row = False
                                 if output_csv_header is None:
                                     output_csv_header = ['COA ID', 'COA Category'] + row
                                     amount_column_index = output_csv_header.index('Total Pledged')
                                     csv_writer.writerow(output_csv_header)
-                                    header_row = False
                             else:
                                 row = [dict_pledge_categories[pledge_category], pledge_category] + row
                                 if row[amount_column_index] != '0': # Ignore non-pledge (contrib-only) rows
