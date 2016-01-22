@@ -2,12 +2,8 @@
 
 # TODOs
 #
-# Add command-line args for output file
-#
 # Wrapper Python script to call get_pledges.py, get_individuals.py, etc.  Then take all results and ZIP them up
 # into posted backup file into S3
-#
-# Consolidate logging code into central UTIL module
 
 import requests
 import re
@@ -20,6 +16,7 @@ import logging
 import argparse
 import os
 from util import settings
+from util import util
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
 class g:
@@ -40,36 +37,9 @@ def main(argv):
         'unspecified, defaults to stderr')
     g.args = parser.parse_args()
 
-    logging.basicConfig(format='%(asctime)s:%(levelname)s:%(message)s', datefmt='%Y-%m-%d %H:%M:%S')
+    util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
 
-    args_dict = vars(g.args)
-
-    if g.args.message_level is not None:
-        if g.args.message_level not in ['Info', 'Warning', 'Error']:
-            logging.error("Specified message level '" + str(g.args.message_level) +
-                "' must be 'Info', 'Warning', or 'Error'")
-            sys.exit(1)
-        else:
-            message_level = str(g.args.message_level)
-    else:
-        message_level = 'Warning'
-
-    if g.args.message_output_filename is not None:
-        message_output_filename = str(g.args.message_output_filename)
-        test_write(message_output_filename)
-    else:
-        message_output_filename = None
-
-    logging_map = {
-        'Info': logging.INFO,
-        'Warning': logging.WARNING,
-        'Error': logging.ERROR
-    }
-
-    logging.getLogger().setLevel(logging_map[message_level])
-    if message_output_filename is not None:
-        logging.basicConfig(file=message_output_filename, format='%(asctime)s:%(levelname)s:%(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S')
+    curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
 
     login_request = {
         'ax': 'login',
@@ -77,8 +47,6 @@ def main(argv):
         'form[login]': settings.login_info.ccb_app_username,
         'form[password]': settings.login_info.ccb_app_password
     }
-
-    curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
 
     pledge_summary_report_info = {
         "id":"",
@@ -174,7 +142,6 @@ def main(argv):
         else:
             logging.error('Error retrieving report settings page. Aborting!')
             sys.exit(1)
-
         dict_pledge_categories = {}
         root_str = ''
         for option_match in re.finditer(r'<option\s+value=\\"([0-9]+)\\"\s*>([^<]*)<\\/option>',
@@ -185,12 +152,13 @@ def main(argv):
                 root_str = option_match.group(2)
                 dict_pledge_categories[root_str] = int(option_match.group(1))
 
+        # Loop over each category with pledges and pull back CSV list of pledges for that category
         output_csv_header = None
         if g.args.output_filename is not None:
             output_filename = g.args.output_filename
         else:
             output_filename = './tmp/pledges_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
-        test_write(output_filename)
+        util.test_write(output_filename)
         with open(output_filename, 'wb') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             for pledge_category in list_pledge_categories:
@@ -222,17 +190,6 @@ def main(argv):
                         logging.warning('Pledge Detail retrieval failure for category ' + pledge_category)
                 else:
                     logging.warning('Unknown pledge category. ' + pledge_category)
-
-
-def test_write(filename):
-    try:
-        test_file_write = open(filename, 'wb')
-    except:
-        logging.error("Cannot write to file '" + filename + "'")
-        sys.exit(1)
-    else:
-        test_file_write.close()
-        os.remove(filename)
 
 
 if __name__ == "__main__":
