@@ -1,10 +1,5 @@
 #!/usr/bin/env python
 
-# TODOs
-#
-# Wrapper Python script to call get_pledges.py, get_individuals.py, etc.  Then take all results and ZIP them up
-# into posted backup file into S3
-
 import requests
 import re
 import sys
@@ -190,6 +185,8 @@ def main(argv):
                         logging.warning('Pledge Detail retrieval failure for category ' + pledge_category)
                 else:
                     logging.warning('Unknown pledge category. ' + pledge_category)
+
+    logging.info('Retrieval of pledge detail completed successfully')
 
 
 if __name__ == "__main__":
