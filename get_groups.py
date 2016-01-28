@@ -55,6 +55,7 @@ def main(argv):
         input_filename = g.args.input_filename
     else:
         # Pull groups XML from CCB REST API (and stash in local temp file to use as input)
+        logging.info('Retrieving groups and group participants from CCB REST API. This could take minutes...')
         response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=group_profiles', stream=True,
             auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
         if response.status_code == 200:
@@ -65,6 +66,7 @@ def main(argv):
                     if chunk: # filter out keep-alive new chunks
                         temp.write(chunk)
                 temp.flush()
+            logging.info('Done pulling groups and group participants from CCB REST API.')
         else:
             logging.error('CCB REST API call for group_profiles failed. Aborting!')
             sys.exit(1)
@@ -98,10 +100,13 @@ def main(argv):
     path = []
     dict_path_ids = {}
     group_id = None
+    logging.info('Creating groups and group participants output files.')
     with open(output_groups_filename, 'wb') as csv_output_groups_file:
         csv_writer_groups = csv.writer(csv_output_groups_file)
+        csv_writer_groups.writerow(['id'] + list_group_props)
         with open(output_participants_filename, 'wb') as csv_output_participants_file:
             csv_writer_participants = csv.writer(csv_output_participants_file)
+            csv_writer_participants.writerow(['group_id', 'participant_id', 'participant_type'])
             for event, elem in ElementTree.iterparse(input_filename, events=('start', 'end')):
                 if event == 'start':
                     path.append(elem.tag)
@@ -119,6 +124,7 @@ def main(argv):
                         csv_writer_participants.writerow(props_csv)
                     path.pop()
                     full_path = '/'.join(path)
+                    elem.clear() # Throw away 'group' node from memory when done processing it
 
     logging.info('Groups written to ' + output_groups_filename)
     logging.info('Group Participants written to ' + output_participants_filename)
