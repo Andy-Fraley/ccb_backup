@@ -9,10 +9,12 @@ import logging
 import datetime
 import csv
 import tempfile
+import StringIO
 from util import settings
 from util import util
 from xml.etree import ElementTree
 from collections import defaultdict
+import json
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
 class g:
@@ -36,6 +38,32 @@ def main(argv):
     g.args = parser.parse_args()
 
     util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
+
+    curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
+
+    login_request = {
+        'ax': 'login',
+        'rurl': '/index.php',
+        'form[login]': settings.login_info.ccb_app_username,
+        'form[password]': settings.login_info.ccb_app_password
+    }
+
+    event_list_info = {
+        "id":"",
+        "type":"event_list",
+        "date_range":"",
+        "ignore_static_range":"static",
+        "start_date":"01/01/2000",
+        "end_date":curr_date_str,
+        "additional_event_types":["","non_church_wide_events","filter_off"],
+        "campus_ids":["1"],
+        "output":"csv"
+    }
+
+    event_list_request = {
+        'request': json.dumps(event_list_info),
+        'output': 'export'
+    }
 
     # Set events and attendance filenames and test validity
     if g.args.output_events_filename is not None:
@@ -110,14 +138,57 @@ def main(argv):
                     current_organizer_id = elem.attrib['id']
                 path.pop()
                 full_path = '/'.join(path)
-
     logging.info('Events written to ' + output_events_filename)
-    print dict_list_event_names.items()
+
+    # Create UI user session to pull list of calendared events
+    logging.info('Logging in to UI session')
+    with requests.Session() as http_session:
+        # Login
+        login_response = http_session.post('https://ingomar.ccbchurch.com/login.php', data=login_request)
+        login_succeeded = False
+        if login_response.status_code == 200:
+            match_login_info = re.search('individual: {\s+id: 5,\s+name: "' + settings.login_info.ccb_app_login_name +
+                '"', login_response.text)
+            if match_login_info != None:
+                login_succeeded = True
+        if not login_succeeded:
+            logging.error('Login to CCB app using username ' + settings.login_info.ccb_app_username +
+                ' failed. Aborting!')
+            sys.exit(1)
+
+        # Get list of pledged categories
+        logging.info('Retrieving list of all scheduled events.  This might take a couple minutes!')
+        event_list_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
+            data=event_list_request)
+        event_list_succeeded = False
+        if event_list_response.status_code == 200:
+            print event_list_response.text[:2000]
+        if event_list_response.status_code == 200 and event_list_response.text[:13] == '"Event Name",':
+            print '*** HERE ***'
+            csv_reader = csv.reader(StringIO.StringIO(event_list_response.text.encode('ascii', 'ignore')))
+            header_row = True
+            for row in csv_reader:
+                if header_row:
+                    header_row = False
+                    output_csv_header = row
+                    event_name_column_index = row.index('Event Name')
+                    attendance_column_index = row.index('Actual Attendance')
+                    date_column_index = row.index('Date')
+                    start_time_column_index = row.index('Start Time')
+                else:
+                    if row[attendance_column_index] != '0':
+                        if row[event_name_column_index] in dict_list_event_names:
+                            retrieve_attendance(dict_list_event_names[row[event_name_column_index]],
+                                row[date_column_index], row[start_time_column_index],
+                                row[attendance_column_index])
+                        else:
+                            logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
+                                                
     # logging.info('Group Participants written to ' + output_attendance_filename)
 
     # Remove temp file holding retrieved event_profiles XML
-    # os.remove(input_filename)
-    logging.info('Left event_profiles XML temp file in place. ' + input_filename)
+    os.remove(input_filename)
+    # logging.info('Left event_profiles XML temp file in place. ' + input_filename)
 
 
 def get_elem_id_and_props(elem, list_props):
@@ -129,6 +200,11 @@ def get_elem_id_and_props(elem, list_props):
         else:
             output_list.append(sub_elem.text.encode('ascii', 'ignore'))
     return output_list
+
+
+def retrieve_attendance(event_name, date, start_time, attendance):
+    print "Retrieving attendance for: event_name='" + str(event_name) + "', date='" + str(date) + "', start_time='" + \
+        str(start_time) + "', attendance='" + str(attendance) + "'"
 
 
 if __name__ == "__main__":
