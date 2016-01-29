@@ -10,7 +10,6 @@ import datetime
 import time
 import csv
 import tempfile
-import StringIO
 from util import settings
 from util import util
 from xml.etree import ElementTree
@@ -83,26 +82,22 @@ def main(argv):
             datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
     util.test_write(output_attendance_filename)
 
-    if g.args.input_events_filename is not None:
-        # Pull event provi XML from input file specified by user
-        input_filename = g.args.input_events_filename
+    # Pull event profiles XML from CCB REST API (and stash in local temp file to use as input)
+    logging.info('Retrieving event profiles from CCB REST API')
+    response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=event_profiles', stream=True,
+        auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
+    if response.status_code == 200:
+        response.raw.decode_content = True
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            input_filename = temp.name
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk: # filter out keep-alive new chunks
+                    temp.write(chunk)
+            temp.flush()
+        logging.info('Done pulling event profiles from CCB REST API.')
     else:
-        # Pull event profiles XML from CCB REST API (and stash in local temp file to use as input)
-        logging.info('Retrieving event profiles from CCB REST API')
-        response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=event_profiles', stream=True,
-            auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
-        if response.status_code == 200:
-            response.raw.decode_content = True
-            with tempfile.NamedTemporaryFile(delete=False) as temp:
-                input_filename = temp.name
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk: # filter out keep-alive new chunks
-                        temp.write(chunk)
-                temp.flush()
-            logging.info('Done pulling event profiles from CCB REST API.')
-        else:
-            logging.error('CCB REST API call for event_profiles failed. Aborting!')
-            sys.exit(1)
+        logging.error('CCB REST API call for event_profiles failed. Aborting!')
+        sys.exit(1)
 
     # Properties to peel off each 'event' node in XML
     list_event_props = [
@@ -149,52 +144,71 @@ def main(argv):
                 full_path = '/'.join(path)
     logging.info('Events written to ' + output_events_filename)
 
-    # Create UI user session to pull list of calendared events
-    logging.info('Logging in to UI session')
-    with requests.Session() as http_session:
-        # Login
-        login_response = http_session.post('https://ingomar.ccbchurch.com/login.php', data=login_request)
-        login_succeeded = False
-        if login_response.status_code == 200:
-            match_login_info = re.search('individual: {\s+id: 5,\s+name: "' + settings.login_info.ccb_app_login_name +
-                '"', login_response.text)
-            if match_login_info != None:
-                login_succeeded = True
-        if not login_succeeded:
-            logging.error('Login to CCB app using username ' + settings.login_info.ccb_app_username +
-                ' failed. Aborting!')
-            sys.exit(1)
+    if g.args.input_events_filename is not None:
+        # Pull calendared events CSV from file
+        input_filename = g.args.input_events_filename
+    else:
+        # Create UI user session to pull list of calendared events
+        logging.info('Logging in to UI session')
+        with requests.Session() as http_session:
+            # Login
+            login_response = http_session.post('https://ingomar.ccbchurch.com/login.php', data=login_request)
+            login_succeeded = False
+            if login_response.status_code == 200:
+                match_login_info = re.search('individual: {\s+id: 5,\s+name: "' + \
+                    settings.login_info.ccb_app_login_name + '"', login_response.text)
+                if match_login_info != None:
+                    login_succeeded = True
+            if not login_succeeded:
+                logging.error('Login to CCB app using username ' + settings.login_info.ccb_app_username +
+                    ' failed. Aborting!')
+                sys.exit(1)
 
-        # Get list of all scheduled events
-        logging.info('Retrieving list of all scheduled events.  This might take a couple minutes!')
-        event_list_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
-            data=event_list_request)
-        event_list_succeeded = False
-        if event_list_response.status_code == 200 and event_list_response.text[:13] == '"Event Name",':
-            csv_reader = csv.reader(StringIO.StringIO(event_list_response.text.encode('ascii', 'ignore')))
-            header_row = True
-            for row in csv_reader:
-                if header_row:
-                    header_row = False
-                    output_csv_header = row
-                    event_name_column_index = row.index('Event Name')
-                    attendance_column_index = row.index('Actual Attendance')
-                    date_column_index = row.index('Date')
-                    start_time_column_index = row.index('Start Time')
-                else:
-                    # Retrieve attendees for events which have non-zero number of attendees
-                    if row[attendance_column_index] != '0':
-                        if row[event_name_column_index] in dict_list_event_names:
-                            retrieve_attendance(dict_list_event_names[row[event_name_column_index]],
-                                row[date_column_index], row[start_time_column_index],
-                                row[attendance_column_index])
-                        else:
-                            logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
+            # Get list of all scheduled events
+            logging.info('Retrieving list of all scheduled events.  This might take a couple minutes!')
+            event_list_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
+                data=event_list_request)
+            event_list_succeeded = False
+            if event_list_response.status_code == 200:
+                event_list_response.raw.decode_content = True
+                with tempfile.NamedTemporaryFile(delete=False) as temp:
+                    input_filename = temp.name
+                    first_chunk = True
+                    for chunk in event_list_response.iter_content(chunk_size=1024):
+                        if chunk: # filter out keep-alive new chunks
+                            if first_chunk:
+                                if chunk[:13] != '"Event Name",':
+                                    logging.error('Mis-formed calendared events CSV returned. Aborting!')
+                                    sys.exit(1)
+                                first_chunk = False
+                            temp.write(chunk)
+                    temp.flush()
+
+    with open(input_filename, 'rb') as csvfile:
+        csv_reader = csv.reader(csvfile)
+        header_row = True
+        for row in csv_reader:
+            if header_row:
+                header_row = False
+                output_csv_header = row
+                event_name_column_index = row.index('Event Name')
+                attendance_column_index = row.index('Actual Attendance')
+                date_column_index = row.index('Date')
+                start_time_column_index = row.index('Start Time')
+            else:
+                # Retrieve attendees for events which have non-zero number of attendees
+                if row[attendance_column_index] != '0':
+                    if row[event_name_column_index] in dict_list_event_names:
+                        retrieve_attendance(dict_list_event_names[row[event_name_column_index]],
+                            row[date_column_index], row[start_time_column_index],
+                            row[attendance_column_index])
+                    else:
+                        logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
 
     # If caller didn't specify input filename, then delete the temporary file we retrieved into
-    if g.args.input_filename is None:
+    if g.args.input_events_filename is None:
         if g.args.keep_temp_file:
-            logging.info('Temporary downloaded events_profile XML retained in file: ' + input_filename)
+            logging.info('Temporary downloaded calendared events CSV retained in file: ' + input_filename)
         else:
             os.remove(input_filename)
 
