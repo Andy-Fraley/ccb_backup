@@ -7,6 +7,7 @@ import argparse
 import os
 import logging
 import datetime
+import time
 import csv
 import tempfile
 import StringIO
@@ -26,6 +27,8 @@ def main(argv):
     global g
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--input-events-filename', required=False, help='Name of input XML file from previous ' +
+        'event_profiles XML retrieval. If not specified, groups XML data retreived from CCB REST API.')
     parser.add_argument('--output-events-filename', required=False, help='Name of CSV output file listing event ' +
         'information. Defaults to ./tmp/events_[datetime_stamp].csv')
     parser.add_argument('--output-attendance-filename', required=False, help='Name of CSV output file listing ' +
@@ -35,6 +38,8 @@ def main(argv):
         "to message output.")
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
+    parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp events_profile file ' + \
+        'created with XML from REST API call is not deleted')
     g.args = parser.parse_args()
 
     util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
@@ -78,22 +83,26 @@ def main(argv):
             datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
     util.test_write(output_attendance_filename)
 
-    # Pull event profiles XML from CCB REST API (and stash in local temp file to use as input)
-    logging.info('Retrieving event profiles from CCB REST API')
-    response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=event_profiles', stream=True,
-        auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
-    if response.status_code == 200:
-        response.raw.decode_content = True
-        with tempfile.NamedTemporaryFile(delete=False) as temp:
-            input_filename = temp.name
-            for chunk in response.iter_content(chunk_size=1024):
-                if chunk: # filter out keep-alive new chunks
-                    temp.write(chunk)
-            temp.flush()
-        logging.info('Done pulling event profiles from CCB REST API.')
+    if g.args.input_events_filename is not None:
+        # Pull event provi XML from input file specified by user
+        input_filename = g.args.input_events_filename
     else:
-        logging.error('CCB REST API call for event_profiles failed. Aborting!')
-        sys.exit(1)
+        # Pull event profiles XML from CCB REST API (and stash in local temp file to use as input)
+        logging.info('Retrieving event profiles from CCB REST API')
+        response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=event_profiles', stream=True,
+            auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
+        if response.status_code == 200:
+            response.raw.decode_content = True
+            with tempfile.NamedTemporaryFile(delete=False) as temp:
+                input_filename = temp.name
+                for chunk in response.iter_content(chunk_size=1024):
+                    if chunk: # filter out keep-alive new chunks
+                        temp.write(chunk)
+                temp.flush()
+            logging.info('Done pulling event profiles from CCB REST API.')
+        else:
+            logging.error('CCB REST API call for event_profiles failed. Aborting!')
+            sys.exit(1)
 
     # Properties to peel off each 'event' node in XML
     list_event_props = [
@@ -156,15 +165,12 @@ def main(argv):
                 ' failed. Aborting!')
             sys.exit(1)
 
-        # Get list of pledged categories
+        # Get list of all scheduled events
         logging.info('Retrieving list of all scheduled events.  This might take a couple minutes!')
         event_list_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
             data=event_list_request)
         event_list_succeeded = False
-        if event_list_response.status_code == 200:
-            print event_list_response.text[:2000]
         if event_list_response.status_code == 200 and event_list_response.text[:13] == '"Event Name",':
-            print '*** HERE ***'
             csv_reader = csv.reader(StringIO.StringIO(event_list_response.text.encode('ascii', 'ignore')))
             header_row = True
             for row in csv_reader:
@@ -176,6 +182,7 @@ def main(argv):
                     date_column_index = row.index('Date')
                     start_time_column_index = row.index('Start Time')
                 else:
+                    # Retrieve attendees for events which have non-zero number of attendees
                     if row[attendance_column_index] != '0':
                         if row[event_name_column_index] in dict_list_event_names:
                             retrieve_attendance(dict_list_event_names[row[event_name_column_index]],
@@ -183,12 +190,13 @@ def main(argv):
                                 row[attendance_column_index])
                         else:
                             logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
-                                                
-    # logging.info('Group Participants written to ' + output_attendance_filename)
 
-    # Remove temp file holding retrieved event_profiles XML
-    os.remove(input_filename)
-    # logging.info('Left event_profiles XML temp file in place. ' + input_filename)
+    # If caller didn't specify input filename, then delete the temporary file we retrieved into
+    if g.args.input_filename is None:
+        if g.args.keep_temp_file:
+            logging.info('Temporary downloaded events_profile XML retained in file: ' + input_filename)
+        else:
+            os.remove(input_filename)
 
 
 def get_elem_id_and_props(elem, list_props):
@@ -202,9 +210,37 @@ def get_elem_id_and_props(elem, list_props):
     return output_list
 
 
-def retrieve_attendance(event_name, date, start_time, attendance):
-    print "Retrieving attendance for: event_name='" + str(event_name) + "', date='" + str(date) + "', start_time='" + \
-        str(start_time) + "', attendance='" + str(attendance) + "'"
+def retrieve_attendance(event_id_list, date, start_time, attendance):
+    logging.info("Retrieving attendance for: event_id(s)='" + str(event_id_list) + "', date='" + str(date) + \
+        "', start_time='" + str(start_time) + "', attendance='" + str(attendance) + "'")
+    return # Do nothing for now
+    for event_id in reversed(event_id_list):
+        time_object = time.strptime(str(date) + ' ' + str(start_time), '%Y-%m-%d %I:%M %p')
+        occurrence_datetime_string = time.strftime('%Y-%m-%d+%H:%M:00', time_object)
+        ccb_rest_service_string = 'attendance_profile&id=' + str(event_id) + 'occurrence=' + \
+            occurrence_datetime_string
+        xml_temp_file = ccb_rest_xml_to_temp_file(ccb_rest_service_string)
+        if xml_temp_file is not None:
+            print 'Retrieved XML file ' + xml_temp_file
+
+
+def ccb_rest_xml_to_temp_file(ccb_rest_service_string):
+    logging.info('Retrieving ' + ccb_rest_service_string + ' from CCB REST API')
+    response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=' + ccb_rest_service_string, stream=True,
+        auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
+    if response.status_code == 200:
+        response.raw.decode_content = True
+        with tempfile.NamedTemporaryFile(delete=False) as temp:
+            input_filename = temp.name
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk: # filter out keep-alive new chunks
+                    temp.write(chunk)
+            temp.flush()
+        logging.info('Done retrieving ' + ccb_rest_service_string + ' from CCB REST API')
+        return input_filename
+    else:
+        logging.warning('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed')
+        return None
 
 
 if __name__ == "__main__":

@@ -17,3 +17,4 @@ TODOS
   time-based things (not things like individuals, groups)
 - Move from settings class to INI file approach
 - Make user/pass settable on command-line or via INI file
+- Make ccb-subdomain settable in INI file
