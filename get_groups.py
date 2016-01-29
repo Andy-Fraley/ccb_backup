@@ -8,6 +8,7 @@ import os
 import logging
 import datetime
 import csv
+import tempfile
 from util import settings
 from util import util
 from xml.etree import ElementTree
@@ -33,6 +34,8 @@ def main(argv):
         "to message output.")
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
+    parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp file created with XML ' +
+        'from REST API call is not deleted')
     g.args = parser.parse_args()
 
     util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
@@ -118,30 +121,33 @@ def main(argv):
                         # Emit 'groups' row
                         props_csv = get_elem_id_and_props(elem, list_group_props)
                         csv_writer_groups.writerow(props_csv)
+                        elem.clear() # Throw away 'group' node from memory when done processing it
                     elif full_path in participant_nodes:
                         # Emit 'group_participants' row
                         props_csv = [ current_group_id, elem.attrib['id'], elem.tag ]
                         csv_writer_participants.writerow(props_csv)
                     path.pop()
                     full_path = '/'.join(path)
-                    elem.clear() # Throw away 'group' node from memory when done processing it
 
     logging.info('Groups written to ' + output_groups_filename)
     logging.info('Group Participants written to ' + output_participants_filename)
 
     # If caller didn't specify input filename, then delete the temporary file we retrieved into
     if g.args.input_filename is None:
-        os.remove(input_filename)
+        if g.args.keep_temp_file:
+            logging.info('Temporary downloaded XML retained in file: ' + input_filename)
+        else:
+            os.remove(input_filename)
 
 
 def get_elem_id_and_props(elem, list_props):
     output_list = [ elem.attrib['id'] ]
     for prop in list_props:
         sub_elem = elem.find(prop)
-        if sub_elem is None:
+        if sub_elem is None or sub_elem.text is None:
             output_list.append('')
         else:
-            output_list.append(sub_elem.text)
+            output_list.append(sub_elem.text.encode('ascii', 'ignore'))
     return output_list
 
 
