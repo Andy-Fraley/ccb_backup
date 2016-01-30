@@ -26,8 +26,8 @@ def main(argv):
     global g
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input-events-filename', required=False, help='Name of input XML file from previous ' +
-        'event_profiles XML retrieval. If not specified, groups XML data retreived from CCB REST API.')
+    parser.add_argument('--input-events-filename', required=False, help='Name of input CSV file from previous ' +
+        'event occurrences retrieval. If not specified, event list CSV data is retrieved from CCB UI.')
     parser.add_argument('--output-events-filename', required=False, help='Name of CSV output file listing event ' +
         'information. Defaults to ./tmp/events_[datetime_stamp].csv')
     parser.add_argument('--output-attendance-filename', required=False, help='Name of CSV output file listing ' +
@@ -37,8 +37,9 @@ def main(argv):
         "to message output.")
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
-    parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp events_profile file ' + \
-        'created with XML from REST API call is not deleted')
+    parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp event occurrences CSV ' + \
+        'file created with CSV data pulled from CCB UI (event list report) is not deleted so it can be used ' + \
+        'in subsequent runs')
     g.args = parser.parse_args()
 
     util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
@@ -94,7 +95,6 @@ def main(argv):
                 if chunk: # filter out keep-alive new chunks
                     temp.write(chunk)
             temp.flush()
-        logging.info('Done pulling event profiles from CCB REST API.')
     else:
         logging.error('CCB REST API call for event_profiles failed. Aborting!')
         sys.exit(1)
@@ -115,7 +115,6 @@ def main(argv):
 
     path = []
     dict_list_event_names = defaultdict(list)
-    logging.info('Creating events output file')
     with open(output_events_filename, 'wb') as csv_output_events_file:
         csv_writer_events = csv.writer(csv_output_events_file)
         csv_writer_events.writerow(['event_id'] + list_event_props + ['group_id', 'organizer_id']) # Write header row
@@ -142,7 +141,6 @@ def main(argv):
                     current_organizer_id = elem.attrib['id']
                 path.pop()
                 full_path = '/'.join(path)
-    logging.info('Events written to ' + output_events_filename)
 
     if g.args.input_events_filename is not None:
         # Pull calendared events CSV from file
@@ -186,24 +184,27 @@ def main(argv):
 
     with open(input_filename, 'rb') as csvfile:
         csv_reader = csv.reader(csvfile)
-        header_row = True
-        for row in csv_reader:
-            if header_row:
-                header_row = False
-                output_csv_header = row
-                event_name_column_index = row.index('Event Name')
-                attendance_column_index = row.index('Actual Attendance')
-                date_column_index = row.index('Date')
-                start_time_column_index = row.index('Start Time')
-            else:
-                # Retrieve attendees for events which have non-zero number of attendees
-                if row[attendance_column_index] != '0':
-                    if row[event_name_column_index] in dict_list_event_names:
-                        retrieve_attendance(dict_list_event_names[row[event_name_column_index]],
-                            row[date_column_index], row[start_time_column_index],
-                            row[attendance_column_index])
-                    else:
-                        logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
+        with open(output_attendance_filename, 'wb') as csv_output_file:
+            csv_writer = csv.writer(csv_output_file)
+            csv_writer.writerow(['event_id', 'event_occurrence', 'individual_id', 'count'])
+            header_row = True
+            for row in csv_reader:
+                if header_row:
+                    header_row = False
+                    output_csv_header = row
+                    event_name_column_index = row.index('Event Name')
+                    attendance_column_index = row.index('Actual Attendance')
+                    date_column_index = row.index('Date')
+                    start_time_column_index = row.index('Start Time')
+                else:
+                    # Retrieve attendees for events which have non-zero number of attendees
+                    if row[attendance_column_index] != '0':
+                        if row[event_name_column_index] in dict_list_event_names:
+                            retrieve_attendance(csv_writer, dict_list_event_names[row[event_name_column_index]],
+                                row[date_column_index], row[start_time_column_index],
+                                row[attendance_column_index])
+                        else:
+                            logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
 
     # If caller didn't specify input filename, then delete the temporary file we retrieved into
     if g.args.input_events_filename is None:
@@ -211,6 +212,9 @@ def main(argv):
             logging.info('Temporary downloaded calendared events CSV retained in file: ' + input_filename)
         else:
             os.remove(input_filename)
+
+    logging.info('Event profile data written to ' + output_events_filename)
+    logging.info('Attendance data written to ' + output_attendance_filename)
 
 
 def get_elem_id_and_props(elem, list_props):
@@ -224,18 +228,35 @@ def get_elem_id_and_props(elem, list_props):
     return output_list
 
 
-def retrieve_attendance(event_id_list, date, start_time, attendance):
-    logging.info("Retrieving attendance for: event_id(s)='" + str(event_id_list) + "', date='" + str(date) + \
-        "', start_time='" + str(start_time) + "', attendance='" + str(attendance) + "'")
-    return # Do nothing for now
+def retrieve_attendance(csv_writer, event_id_list, date, start_time, attendance):
     for event_id in reversed(event_id_list):
         time_object = time.strptime(str(date) + ' ' + str(start_time), '%Y-%m-%d %I:%M %p')
         occurrence_datetime_string = time.strftime('%Y-%m-%d+%H:%M:00', time_object)
-        ccb_rest_service_string = 'attendance_profile&id=' + str(event_id) + 'occurrence=' + \
+        ccb_rest_service_string = 'attendance_profile&id=' + str(event_id) + '&occurrence=' + \
             occurrence_datetime_string
         xml_temp_file = ccb_rest_xml_to_temp_file(ccb_rest_service_string)
         if xml_temp_file is not None:
-            print 'Retrieved XML file ' + xml_temp_file
+            valid_attendance_data = process_attendance_xml_file(csv_writer, xml_temp_file, event_id,
+                occurrence_datetime_string)
+            os.remove(xml_temp_file)
+            if valid_attendance_data:
+                break
+
+
+def process_attendance_xml_file(csv_writer, input_xml_filename, event_id, event_occurrence_datetime):
+    xml_tree = ElementTree.parse(input_xml_filename)
+    xml_root = xml_tree.getroot()
+    for message in xml_root.findall('./messages/message'):
+        logging.info(message.text)
+        return False
+    for attendee in xml_root.findall('./response/events/event/attendees/attendee'):
+        csv_writer.writerow([event_id, event_occurrence_datetime, attendee.attrib['id'], 1])
+    for headcount in xml_root.findall('./response/events/event/head_count'):
+        headcount_number = int(headcount.text)
+        if headcount_number > 0:
+            csv_writer.writerow([event_id, event_occurrence_datetime, '', headcount_number])
+            break
+    return True
 
 
 def ccb_rest_xml_to_temp_file(ccb_rest_service_string):
@@ -250,7 +271,6 @@ def ccb_rest_xml_to_temp_file(ccb_rest_service_string):
                 if chunk: # filter out keep-alive new chunks
                     temp.write(chunk)
             temp.flush()
-        logging.info('Done retrieving ' + ccb_rest_service_string + ' from CCB REST API')
         return input_filename
     else:
         logging.warning('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed')
