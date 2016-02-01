@@ -10,7 +10,6 @@ import StringIO
 import logging
 import argparse
 import os
-from util import settings
 from util import util
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
@@ -24,24 +23,19 @@ def main(argv):
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-filename', required=False,
-        help='Output CSV filename. Defaults to ./tmp/[datetime_stamp]_pledges.csv')
-    parser.add_argument('--message-level', required=False, help="Either 'Info', 'Warning', or 'Error'. " +
-        "Defaults to 'Warning' if unspecified. Log outputs greater or equal to specified severity are emitted " +
-        "to message output.")
+        help='Output CSV filename. Defaults to ./tmp/pledges_[datetime_stamp].csv')
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
     g.args = parser.parse_args()
 
-    util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
+    message_level = util.get_ini_setting('logging', 'level')
+    ccb_app_username = util.get_ini_setting('ccb', 'app_username')
+    ccb_app_password = util.get_ini_setting('ccb', 'app_password')
+    ccb_subdomain = util.get_ini_setting('ccb', 'subdomain')
+
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
-
-    login_request = {
-        'ax': 'login',
-        'rurl': '/index.php',
-        'form[login]': settings.login_info.ccb_app_username,
-        'form[password]': settings.login_info.ccb_app_password
-    }
 
     pledge_summary_report_info = {
         "id":"",
@@ -54,7 +48,7 @@ def main(argv):
         "campus_ids":["1"],
         "output":"csv"
     }
-
+    
     pledge_summary_request = {
         'request': json.dumps(pledge_summary_report_info),
         'output': 'export'
@@ -92,21 +86,10 @@ def main(argv):
     }
 
     with requests.Session() as http_session:
-        # Login
-        login_response = http_session.post('https://ingomar.ccbchurch.com/login.php', data=login_request)
-        login_succeeded = False
-        if login_response.status_code == 200:
-            match_login_info = re.search('individual: {\s+id: 5,\s+name: "' + settings.login_info.ccb_app_login_name +
-                '"', login_response.text)
-            if match_login_info != None:
-                login_succeeded = True
-        if not login_succeeded:
-            logging.error('Login to CCB app using username ' + settings.login_info.ccb_app_username +
-                ' failed. Aborting!')
-            sys.exit(1)
+        util.login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password)
 
         # Get list of pledged categories
-        pledge_summary_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
+        pledge_summary_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
             data=pledge_summary_request)
         pledge_summary_succeeded = False
         if pledge_summary_response.status_code == 200:
@@ -127,7 +110,7 @@ def main(argv):
                 list_pledge_categories.append(unicode(row[0]))
 
         # Get dictionary of category option IDs
-        report_page = http_session.get('https://ingomar.ccbchurch.com/service/report_settings.php',
+        report_page = http_session.get('https://' + ccb_subdomain + '.ccbchurch.com/service/report_settings.php',
             params=pledge_detail_dialog_request)
         if report_page.status_code == 200:
             match_report_options = re.search(
@@ -162,8 +145,8 @@ def main(argv):
                     pledge_detail_report_info['transaction_detail_type_id'] = \
                         str(dict_pledge_categories[pledge_category])
                     pledge_detail_request['request'] = json.dumps(pledge_detail_report_info)
-                    pledge_detail_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
-                        data=pledge_detail_request)
+                    pledge_detail_response = http_session.post('https://' + ccb_subdomain + \
+                        '.ccbchurch.com/report.php', data=pledge_detail_request)
                     pledge_detail_succeeded = False
                     if pledge_detail_response.status_code == 200 and pledge_detail_response.text[:8] == 'Name(s),':
                         pledge_detail_succeeded = True
@@ -186,7 +169,7 @@ def main(argv):
                 else:
                     logging.warning('Unknown pledge category. ' + pledge_category)
 
-    logging.info('Retrieval of pledge detail completed successfully')
+    logging.info('Pledge details retrieved successfully and written to ' + output_filename)
 
 
 if __name__ == "__main__":
