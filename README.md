@@ -10,11 +10,9 @@ STATUS
 2016-01-20 These are under development (non-working state) for now.
 
 TODOS
-- ccb_backup.py (call get_pledges.py, get_individuals.py, etc. then take all results and ZIP them up
-  into posted backup file into S3)
-- Allow "start date" and "end date" across all utilities (to allow for incremental backups)?  Would only affect
-  time-based things (not things like individuals, groups)
 - Move from settings class to INI file approach
 - Make user/pass settable on command-line or via INI file
 - Make ccb-subdomain settable in INI file
 - Refactor http URL --> XML file into routine, push to util.py
+- ccb_backup.py (call get_pledges.py, get_individuals.py, etc. then take all results and ZIP them up
+  into posted backup file into S3)

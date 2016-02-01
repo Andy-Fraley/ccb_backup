@@ -1,5 +1,6 @@
-# File with private settings (passwords, etc.)
+# Files with private settings (passwords, etc.)
 util/settings.py
+ccb_backup.ini
 
 # Any files in local tmp directory
 tmp/

@@ -44,3 +44,12 @@ def test_write(filename):
     else:
         test_file_write.close()
         os.remove(filename)
+
+
+
+def get_arg_or_ini(arg, section, parm):
+    if arg is not None:
+        return arg
+    else:
+        config_file_path = os.path.dirname(os.path.abspath(__file__)) + '../ccb_backup.ini'
+        print config_file_path

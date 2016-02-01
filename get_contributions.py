@@ -48,7 +48,7 @@ def main(argv):
         'type': 'transactions_batch_date',
         'date_range': '',
         'ignore_static_range': 'static',
-        'start_date': '01/01/2000',
+        'start_date': '01/01/1990',
         'end_date': curr_date_str,
         'transactions_batch_date_number_start': '',
         'transactions_batch_date_number_end': '',

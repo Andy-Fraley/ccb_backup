@@ -49,7 +49,7 @@ def main(argv):
         "pledge_type":"family",
         "date_range":"",
         "ignore_static_range":"static",
-        "start_date":"01/01/2000",
+        "start_date":"01/01/1990",
         "end_date":curr_date_str,
         "campus_ids":["1"],
         "output":"csv"
@@ -80,7 +80,7 @@ def main(argv):
         'show': 'all',
         'date_range': '',
         'ignore_static_range': 'static',
-        'start_date': '01/01/2000',
+        'start_date': '01/01/1990',
         'end_date': curr_date_str,
         'campus_ids': ['1'],
         'output': 'csv'

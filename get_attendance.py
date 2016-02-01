@@ -58,7 +58,7 @@ def main(argv):
         "type":"event_list",
         "date_range":"",
         "ignore_static_range":"static",
-        "start_date":"01/01/2000",
+        "start_date":"01/01/1990",
         "end_date":curr_date_str,
         "additional_event_types":["","non_church_wide_events","filter_off"],
         "campus_ids":["1"],
