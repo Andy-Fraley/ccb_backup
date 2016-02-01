@@ -37,13 +37,6 @@ def main(argv):
 
     curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
 
-    login_request = {
-        'ax': 'login',
-        'rurl': '/index.php',
-        'form[login]': ccb_app_username,
-        'form[password]': ccb_app_password
-    }
-
     individual_detail_report_info = {
         'id':'',
         'type': 'export_individuals_change_log',
