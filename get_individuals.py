@@ -10,7 +10,6 @@ import StringIO
 import logging
 import argparse
 import os
-from util import settings
 from util import util
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
@@ -25,22 +24,24 @@ def main(argv):
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-filename', required=False,
         help='Output CSV filename. Defaults to ./tmp/[datetime_stamp]_pledges.csv')
-    parser.add_argument('--message-level', required=False, help="Either 'Info', 'Warning', or 'Error'. " +
-        "Defaults to 'Warning' if unspecified. Log outputs greater or equal to specified severity are emitted " +
-        "to message output.")
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
     g.args = parser.parse_args()
 
-    util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
+    message_level = util.get_ini_setting('logging', 'level')
+    ccb_app_username = util.get_ini_setting('ccb', 'app_username')
+    ccb_app_password = util.get_ini_setting('ccb', 'app_password')
+    ccb_subdomain = util.get_ini_setting('ccb', 'subdomain')
+
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
 
     login_request = {
         'ax': 'login',
         'rurl': '/index.php',
-        'form[login]': settings.login_info.ccb_app_username,
-        'form[password]': settings.login_info.ccb_app_password
+        'form[login]': ccb_app_username,
+        'form[password]': ccb_app_password
     }
 
     individual_detail_report_info = {
@@ -57,18 +58,7 @@ def main(argv):
     }
 
     with requests.Session() as http_session:
-        # Login
-        login_response = http_session.post('https://ingomar.ccbchurch.com/login.php', data=login_request)
-        login_succeeded = False
-        if login_response.status_code == 200:
-            match_login_info = re.search('individual: {\s+id: 5,\s+name: "' + settings.login_info.ccb_app_login_name +
-                '"', login_response.text)
-            if match_login_info != None:
-                login_succeeded = True
-        if not login_succeeded:
-            logging.error('Login to CCB app using username ' + settings.login_info.ccb_app_username +
-                ' failed. Aborting!')
-            sys.exit(1)
+        util.login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password)
 
         # Pull back complete CSV containing detail info for every individual in CCB database
         output_csv_header = None
@@ -80,7 +70,7 @@ def main(argv):
         with open(output_filename, 'wb') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             logging.info('Note that it takes CCB a minute or two to pull retrive all individual information')
-            individual_detail_response = http_session.post('https://ingomar.ccbchurch.com/report.php',
+            individual_detail_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
                 data=individual_detail_request)
             individual_detail_succeeded = False
             if individual_detail_response.status_code == 200 and \
@@ -93,7 +83,7 @@ def main(argv):
                 logging.error('Individual Detail retrieval failed')
                 sys.exit(1)
             else:
-                logging.info('Retrieval of individual info completed successfully')
+                logging.info('Individual info successfully retrieved into file ' + output_filename)
 
 
 if __name__ == "__main__":
