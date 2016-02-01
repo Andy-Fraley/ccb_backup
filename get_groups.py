@@ -8,8 +8,6 @@ import os
 import logging
 import datetime
 import csv
-import tempfile
-from util import settings
 from util import util
 from xml.etree import ElementTree
 
@@ -29,16 +27,18 @@ def main(argv):
         'information. Defaults to ./tmp/groups_[datetime_stamp].csv')
     parser.add_argument('--output-participants-filename', required=False, help='Name of CSV output file listing ' +
         'group participant information. Defaults to ./tmp/group_participants_[datetime_stamp].csv')
-    parser.add_argument('--message-level', required=False, help="Either 'Info', 'Warning', or 'Error'. " +
-        "Defaults to 'Warning' if unspecified. Log outputs greater or equal to specified severity are emitted " +
-        "to message output.")
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
         'unspecified, defaults to stderr')
     parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp file created with XML ' +
         'from REST API call is not deleted')
     g.args = parser.parse_args()
 
-    util.set_logger(g.args.message_level, g.args.message_output_filename, os.path.basename(__file__))
+    message_level = util.get_ini_setting('logging', 'level')
+    ccb_subdomain = util.get_ini_setting('ccb', 'subdomain')
+    ccb_api_username = util.get_ini_setting('ccb', 'api_username')
+    ccb_api_password = util.get_ini_setting('ccb', 'api_password')
+
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     # Set groups and participant filenames and test validity
     if g.args.output_groups_filename is not None:
@@ -57,21 +57,10 @@ def main(argv):
         # Pull groups XML from input file specified by user
         input_filename = g.args.input_filename
     else:
-        # Pull groups XML from CCB REST API (and stash in local temp file to use as input)
-        logging.info('Retrieving groups and group participants from CCB REST API. This could take minutes...')
-        response = requests.get('https://ingomar.ccbchurch.com/api.php?srv=group_profiles', stream=True,
-            auth=(settings.login_info.ccb_api_username, settings.login_info.ccb_api_password))
-        if response.status_code == 200:
-            response.raw.decode_content = True
-            with tempfile.NamedTemporaryFile(delete=False) as temp:
-                input_filename = temp.name
-                for chunk in response.iter_content(chunk_size=1024):
-                    if chunk: # filter out keep-alive new chunks
-                        temp.write(chunk)
-                temp.flush()
-            logging.info('Done pulling groups and group participants from CCB REST API.')
-        else:
-            logging.error('CCB REST API call for group_profiles failed. Aborting!')
+        input_filename = util.ccb_rest_xml_to_temp_file(ccb_subdomain, 'group_profiles', ccb_api_username,
+            ccb_api_password)
+        if input_filename is None:
+            logging.error('Could not retrieve group_profiles, so aborting!')
             sys.exit(1)
 
     # Properties to peel off each 'group' node in XML
@@ -119,7 +108,7 @@ def main(argv):
                 elif event == 'end':
                     if full_path == 'ccb_api/response/groups/group':
                         # Emit 'groups' row
-                        props_csv = get_elem_id_and_props(elem, list_group_props)
+                        props_csv = util.get_elem_id_and_props(elem, list_group_props)
                         csv_writer_groups.writerow(props_csv)
                         elem.clear() # Throw away 'group' node from memory when done processing it
                     elif full_path in participant_nodes:
@@ -138,17 +127,6 @@ def main(argv):
             logging.info('Temporary downloaded XML retained in file: ' + input_filename)
         else:
             os.remove(input_filename)
-
-
-def get_elem_id_and_props(elem, list_props):
-    output_list = [ elem.attrib['id'] ]
-    for prop in list_props:
-        sub_elem = elem.find(prop)
-        if sub_elem is None or sub_elem.text is None:
-            output_list.append('')
-        else:
-            output_list.append(sub_elem.text.encode('ascii', 'ignore'))
-    return output_list
 
 
 if __name__ == "__main__":

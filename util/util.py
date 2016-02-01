@@ -6,6 +6,8 @@ import ConfigParser
 import string
 import sys
 import re
+import requests
+import tempfile
 
 
 def set_logger(message_level='Warning', message_output_filename=None, program_filename=None):
@@ -81,9 +83,7 @@ def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):
         sys.exit(1)
 
 
-def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_username, ccb_api_password,
-    check_string=None):
-
+def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_username, ccb_api_password):
     logging.info('Retrieving ' + ccb_rest_service_string + ' from CCB REST API')
     response = requests.get('https://' + ccb_subdomain + '.ccbchurch.com/api.php?srv=' + ccb_rest_service_string,
         stream=True, auth=(ccb_api_username, ccb_api_password))
@@ -99,3 +99,14 @@ def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_us
     else:
         logging.warning('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed')
         return None
+
+
+def get_elem_id_and_props(elem, list_props):
+    output_list = [ elem.attrib['id'] ]
+    for prop in list_props:
+        sub_elem = elem.find(prop)
+        if sub_elem is None or sub_elem.text is None:
+            output_list.append('')
+        else:
+            output_list.append(sub_elem.text.encode('ascii', 'ignore'))
+    return output_list
