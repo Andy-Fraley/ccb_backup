@@ -107,6 +107,15 @@ def main(argv):
     else:
         message_warning('Error running zip. Exit status ' + str(exit_status))
 
+    # Push ZIP file into appropriate schedule folders (daily, weekly, monthly, etc.) and then delete excess
+    # backups in each folder
+    if backups_to_do is not None:
+        for folder_name in backups_to_do:
+            if backups_to_do[folder_name]['do_backup']:
+                upload_to_s3(folder_name, output_filename)
+            for item_to_delete in backups_to_do[folder_name]['files_to_delete']:
+                delete_from_s3(item_to_delete)
+
     # If user specified the source directory, don't delete it!  And if user asked not to retain temp directory,
     # don't delete it!
     if g.args.source_directory is None:
@@ -117,6 +126,24 @@ def main(argv):
             message_info('Temporary output directory deleted')
 
     sys.exit(0)
+
+
+def upload_to_s3(folder_name, output_filename):
+    global g
+
+    s3_key = folder_name + '/' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
+    s3 = boto3.resource('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
+        region_name=g.region_name)
+    data = open(output_filename, 'rb')
+    bucket = s3.Bucket(g.bucket_name)
+    bucket.put_object(Key=s3_key, Body=data)
+    message_info('Uploaded to S3: ' + s3_key)
+
+
+def delete_from_s3(item_to_delete):
+    item_to_delete_key = item_to_delete.key
+    item_to_delete.delete()
+    print 'Deleted from S3: ' + item_to_delete_key
 
 
 def get_backups_to_do():
@@ -163,11 +190,20 @@ def get_backups_to_do():
         if folder_name in files_per_folder_dict:
             sorted_by_last_modified_list = sorted(files_per_folder_dict[folder_name], key=lambda x: x.last_modified)
             num_files = len(sorted_by_last_modified_list)
-            if num_files_to_keep > 0 and num_files > num_files_to_keep:
-                files_to_delete = sorted_by_last_modified_list[:num_files_to_keep - num_files]
-            if sorted_by_last_modified_list[num_files - 1].last_modified > schedules_by_folder_name[folder_name] \
+            print "Is '" + str(sorted_by_last_modified_list[num_files - 1].last_modified) + "' greater than '" + str(schedules_by_folder_name[folder_name]['backup_after_datetime']) + "'?"
+            if sorted_by_last_modified_list[num_files - 1].last_modified < schedules_by_folder_name[folder_name] \
                ['backup_after_datetime']:
+                print "Nope! Setting 'do_backup' to False"
                 do_backup = False
+            # TODO deleted 2 out of weekly, should have deleted 3
+            if num_files_to_keep > 0 and num_files >= num_files_to_keep:
+                if do_backup:
+                    kicker = 1
+                else:
+                    kicker = 0
+                if num_files - num_files_to_keep + kicker > 0:
+                    files_to_delete = sorted_by_last_modified_list[0:num_files - num_files_to_keep + kicker]
+        print folder_name, do_backup, len(files_to_delete)
         if do_backup or len(files_to_delete) > 0:
             backups_to_post_dict[folder_name] = {'do_backup': do_backup, 'files_to_delete': files_to_delete}
     if len(backups_to_post_dict) > 0:
@@ -212,6 +248,7 @@ def get_schedules_from_ini():
 
 def now_minus_delta_time(delta_time_string):
     curr_datetime = datetime.datetime.now(pytz.UTC)
+    # curr_datetime = datetime.datetime(2016, 1, 7, 10, 52, 23, tzinfo=pytz.UTC)
     match = re.match('([1-9][0-9]*)([smhdwMY])', delta_time_string)
     if match is None:
         return None
@@ -220,16 +257,16 @@ def now_minus_delta_time(delta_time_string):
     seconds_per_unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400, 'w': 604800}
     if unit_char in seconds_per_unit:
         delta_secs = int(seconds_per_unit[unit_char]) * num_units
-        return curr_datetime - datetime.timedelta(seconds=delta_secs)
+        return curr_datetime + datetime.timedelta(seconds=delta_secs)
     elif unit_char == 'M':
-        month = curr_datetime.month - 1 - num_units
-        year = int(curr_datetime.year - month / 12)
+        month = curr_datetime.month - 1 + num_units
+        year = int(curr_datetime.year + month / 12)
         month = month % 12 + 1
         day = min(curr_datetime.day, calendar.monthrange(year, month)[1])
         return datetime.datetime(year, month, day, curr_datetime.hour, curr_datetime.minute, curr_datetime.second,
             tzinfo=pytz.UTC)
     else: # unit_char == 'Y'
-        return datetime.datetime(curr_datetime.year - num_units, curr_datetime.month, curr_datetime.day,
+        return datetime.datetime(curr_datetime.year + num_units, curr_datetime.month, curr_datetime.day,
             curr_datetime.hour, curr_datetime.minute, curr_datetime.second, tzinfo=pytz.UTC)
 
 
