@@ -45,6 +45,8 @@ def main(argv):
         'to zip and optionally post to AWS S3')
     parser.add_argument('--retain-temp-directory', action='store_true', help='If specified, the temp directory ' +
         'without output from get_*.py utilities is not deleted')
+    parser.add_argument('--show-backups-to-do', action='store_true', help='If specified, the ONLY thing that is ' +
+        'done is backup posts and deletions are calculated and displayed. Used for testing')
     g.args = parser.parse_args()
 
     g.program_filename = os.path.basename(__file__)
@@ -73,13 +75,24 @@ def main(argv):
     g.region_name = util.get_ini_setting('aws', 'region_name')
     g.bucket_name = util.get_ini_setting('aws', 'bucket_name')
 
+    # If user specified just to show work to be done (backups to do), calculate, display, and exit
+    if g.args.show_backups_to_do:
+        backups_to_do = get_backups_to_do()
+        if backups_to_do is None:
+            message_info('Backups in S3 are already up-to-date. Nothing to do')
+            sys.exit(0)
+        else:
+            message_info('There are backups/deletions to do')
+            message_info('Backup plan details: ' + str(backups_to_do))
+            sys.exit(0)
+
+    # If we're posting to S3 and deleting the ZIP file, then utility has been run only for purpose of
+    # posting to S3. See if there are posts to be done and exit if not
     if g.args.post_to_s3 and g.args.delete_zip:
         backups_to_do = get_backups_to_do()
         if backups_to_do is None:
             message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
             sys.exit(0)
-        else:
-            print backups_to_do
 
     # If user specified a directory with set of already-created get_*.py utilities output files to use, then
     # do not run get_*.py data collection utilities, just use that
@@ -143,7 +156,7 @@ def upload_to_s3(folder_name, output_filename):
 def delete_from_s3(item_to_delete):
     item_to_delete_key = item_to_delete.key
     item_to_delete.delete()
-    print 'Deleted from S3: ' + item_to_delete_key
+    message_info('Deleted from S3: ' + item_to_delete_key)
 
 
 def get_backups_to_do():
@@ -190,11 +203,16 @@ def get_backups_to_do():
         if folder_name in files_per_folder_dict:
             sorted_by_last_modified_list = sorted(files_per_folder_dict[folder_name], key=lambda x: x.last_modified)
             num_files = len(sorted_by_last_modified_list)
-            print "Is '" + str(sorted_by_last_modified_list[num_files - 1].last_modified) + "' greater than '" + str(schedules_by_folder_name[folder_name]['backup_after_datetime']) + "'?"
-            if sorted_by_last_modified_list[num_files - 1].last_modified < schedules_by_folder_name[folder_name] \
-               ['backup_after_datetime']:
-                print "Nope! Setting 'do_backup' to False"
+            if schedules_by_folder_name[folder_name]['backup_after_datetime'] < \
+               sorted_by_last_modified_list[num_files - 1].last_modified:
                 do_backup = False
+                message_info(folder_name + ': ' + \
+                    str(schedules_by_folder_name[folder_name]['backup_after_datetime']) + ' < ' + \
+                    str(sorted_by_last_modified_list[num_files - 1].last_modified) + ', no backup to do')
+            else:
+                message_info(folder_name + ': ' + \
+                    str(schedules_by_folder_name[folder_name]['backup_after_datetime']) + ' > ' + \
+                    str(sorted_by_last_modified_list[num_files - 1].last_modified) + ', doing backup')
             # TODO deleted 2 out of weekly, should have deleted 3
             if num_files_to_keep > 0 and num_files >= num_files_to_keep:
                 if do_backup:
@@ -203,7 +221,6 @@ def get_backups_to_do():
                     kicker = 0
                 if num_files - num_files_to_keep + kicker > 0:
                     files_to_delete = sorted_by_last_modified_list[0:num_files - num_files_to_keep + kicker]
-        print folder_name, do_backup, len(files_to_delete)
         if do_backup or len(files_to_delete) > 0:
             backups_to_post_dict[folder_name] = {'do_backup': do_backup, 'files_to_delete': files_to_delete}
     if len(backups_to_post_dict) > 0:
@@ -217,6 +234,8 @@ def get_schedules_from_ini():
     config_parser = ConfigParser.ConfigParser()
     config_parser.read(config_file_path)
     schedules = []
+    curr_datetime = datetime.datetime.now(pytz.UTC)
+    message_info('Current UTC datetime: ' + str(curr_datetime))
     for schedule in config_parser.items('schedules'):
         schedule_parms = schedule[1].split(',')
         if len(schedule_parms) != 3:
@@ -248,6 +267,7 @@ def get_schedules_from_ini():
 
 def now_minus_delta_time(delta_time_string):
     curr_datetime = datetime.datetime.now(pytz.UTC)
+    slop = 15 * 60 # 15 minutes of "slop" allowed in determining new backup is needed
     # curr_datetime = datetime.datetime(2016, 1, 7, 10, 52, 23, tzinfo=pytz.UTC)
     match = re.match('([1-9][0-9]*)([smhdwMY])', delta_time_string)
     if match is None:
@@ -256,18 +276,19 @@ def now_minus_delta_time(delta_time_string):
     unit_char = match.group(2)
     seconds_per_unit = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400, 'w': 604800}
     if unit_char in seconds_per_unit:
-        delta_secs = int(seconds_per_unit[unit_char]) * num_units
-        return curr_datetime + datetime.timedelta(seconds=delta_secs)
+        delta_secs = (int(seconds_per_unit[unit_char]) * num_units) - slop
+        return curr_datetime - datetime.timedelta(seconds=delta_secs)
     elif unit_char == 'M':
-        month = curr_datetime.month - 1 + num_units
+        month = curr_datetime.month - 1 - num_units
         year = int(curr_datetime.year + month / 12)
         month = month % 12 + 1
         day = min(curr_datetime.day, calendar.monthrange(year, month)[1])
         return datetime.datetime(year, month, day, curr_datetime.hour, curr_datetime.minute, curr_datetime.second,
-            tzinfo=pytz.UTC)
+            tzinfo=pytz.UTC) - datetime.timedelta(seconds=slop)
     else: # unit_char == 'Y'
         return datetime.datetime(curr_datetime.year + num_units, curr_datetime.month, curr_datetime.day,
-            curr_datetime.hour, curr_datetime.minute, curr_datetime.second, tzinfo=pytz.UTC)
+            curr_datetime.hour, curr_datetime.minute, curr_datetime.second, tzinfo=pytz.UTC) - \
+            datetime.timedelta(seconds=slop)
 
 
 def run_util(util_name, output_pair=None):
