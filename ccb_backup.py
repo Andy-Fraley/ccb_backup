@@ -25,6 +25,7 @@ class g:
     aws_secret_access_key = None
     region_name = None
     bucket_name = None
+    reuse_output_filename = None
 
 
 def main(argv):
@@ -144,7 +145,11 @@ def main(argv):
 def upload_to_s3(folder_name, output_filename):
     global g
 
-    s3_key = folder_name + '/' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
+    # Cache and reuse exact same S3 filename even if upload_to_s3 called multiple times for daily, weekly, etc.
+    if g.reuse_output_filename is None:
+        g.reuse_output_filename = datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
+
+    s3_key = folder_name + '/' + g.reuse_output_filename
     s3 = boto3.resource('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
         region_name=g.region_name)
     data = open(output_filename, 'rb')
