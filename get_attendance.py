@@ -38,6 +38,9 @@ def main(argv):
     parser.add_argument('--keep-temp-file', action='store_true', help='If specified, temp event occurrences CSV ' + \
         'file created with CSV data pulled from CCB UI (event list report) is not deleted so it can be used ' + \
         'in subsequent runs')
+    parser.add_argument('--all-time', action='store_true', help='Normally, attendance data is only archived for ' + \
+        'current year (figuring earlier backups covered earlier years). But setting this flag, collects ' \
+        'attendance data note just for this year but across all years')
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
@@ -49,14 +52,22 @@ def main(argv):
 
     util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
-    curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
+    datetime_now = datetime.datetime.now()
+    curr_date_str = datetime_now.strftime('%m/%d/%Y')
+
+    if g.args.all_time:
+        start_date_str = '01/01/1990'
+    else:
+        start_date_str = '01/01/' + datetime_now.strftime('%Y')
+
+    logging.info('Gathering attendance data between ' + start_date_str + ' and ' + curr_date_str)
 
     event_list_info = {
         "id":"",
         "type":"event_list",
         "date_range":"",
         "ignore_static_range":"static",
-        "start_date":"01/01/1990",
+        "start_date":start_date_str,
         "end_date":curr_date_str,
         "additional_event_types":["","non_church_wide_events","filter_off"],
         "campus_ids":["1"],

@@ -48,6 +48,9 @@ def main(argv):
         'without output from get_*.py utilities is not deleted')
     parser.add_argument('--show-backups-to-do', action='store_true', help='If specified, the ONLY thing that is ' +
         'done is backup posts and deletions are calculated and displayed. Used for testing')
+    parser.add_argument('--all-time', action='store_true', help='Normally, attendance data is only archived for ' + \
+        'current year (figuring earlier backups covered earlier years). But setting this flag, collects ' \
+        'attendance data note just for this year but across all years')
     g.args = parser.parse_args()
 
     g.program_filename = os.path.basename(__file__)
@@ -75,6 +78,9 @@ def main(argv):
     g.aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key')
     g.region_name = util.get_ini_setting('aws', 'region_name')
     g.bucket_name = util.get_ini_setting('aws', 'bucket_name')
+
+    # Start with assumption no backups to do
+    backups_to_do = None
 
     # If user specified just to show work to be done (backups to do), calculate, display, and exit
     if g.args.show_backups_to_do:
@@ -301,6 +307,11 @@ def now_minus_delta_time(delta_time_string):
 def run_util(util_name, output_pair=None):
     global g
 
+    if util_name == 'attendance' and g.args.all_time:
+        all_time_list = [ '--all-time' ]
+    else:
+        all_time_list = []
+
     datetime_stamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     util_py = 'get_' + util_name + '.py'
     fullpath_util_py = os.path.dirname(os.path.realpath(__file__)) + '/' + util_py
@@ -315,7 +326,8 @@ def run_util(util_name, output_pair=None):
         output_filename = g.temp_directory + '/' + util_name + '_' + datetime_stamp + '.csv'
         outputs_list = ['--output-filename', output_filename]
         message_info('Running ' + util_py + ' with output file ' + output_filename)
-    exec_list = [fullpath_util_py, '--message-output-filename', g.message_output_filename] + outputs_list
+    exec_list = [fullpath_util_py] + all_time_list + ['--message-output-filename', g.message_output_filename] + \
+        outputs_list
     exit_status = subprocess.call(exec_list)
     if exit_status == 0:
         message_info('Successfully ran ' + util_py)
