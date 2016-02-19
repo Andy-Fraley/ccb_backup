@@ -107,6 +107,7 @@ def main(argv):
         run_util('attendance', ['attendance', 'events'])
         run_util('pledges')
         run_util('contributions')
+        message_info('Finished all data collection')
 
     # Create output ZIP file
     if g.args.output_filename is not None:
@@ -115,9 +116,10 @@ def main(argv):
         output_filename = './tmp/ccb_backup_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
     zip_password = util.get_ini_setting('zip_file', 'password')
     exec_zip_list = ['/usr/bin/zip', '-P', zip_password, '-j', '-r', output_filename, g.temp_directory + '/']
+    message_info('Zipping data collection results files')
     exit_status = subprocess.call(exec_zip_list)
     if exit_status == 0:
-        message_info('Zipped get_*.py utilities output and messages log to ' + output_filename)
+        message_info('Successfully zipped get_*.py utilities output and messages log to ' + output_filename)
     else:
         message_warning('Error running zip. Exit status ' + str(exit_status))
 
