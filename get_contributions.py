@@ -81,9 +81,11 @@ def main(argv):
                     csv_writer.writerow(row)
             if not contribution_detail_succeeded:
                 logging.error('Contribution Detail retrieval failed')
-                sys.exit(1)
+                util.sys_exit(1)
             else:
                 logging.info('Contribution info successfully retrieved into file ' + output_filename)
+
+    util.sys_exit(0)
 
 
 if __name__ == "__main__":

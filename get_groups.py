@@ -61,7 +61,7 @@ def main(argv):
             ccb_api_password)
         if input_filename is None:
             logging.error('Could not retrieve group_profiles, so aborting!')
-            sys.exit(1)
+            util.sys_exit(1)
 
     # Properties to peel off each 'group' node in XML
     list_group_props = [
@@ -127,6 +127,8 @@ def main(argv):
             logging.info('Temporary downloaded XML retained in file: ' + input_filename)
         else:
             os.remove(input_filename)
+
+    util.sys_exit(0)
 
 
 if __name__ == "__main__":

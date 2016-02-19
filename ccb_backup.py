@@ -67,7 +67,7 @@ def main(argv):
 
     if not g.args.post_to_s3 and g.args.delete_zip:
         message_error('Does not make sense to create zip file and delete it without posting to AWS S3. Aborting!')
-        sys.exit(1)
+        util.sys_exit(1)
 
     # Load AWS creds which are used for checking need for backup and posting backup file
     g.aws_access_key_id = util.get_ini_setting('aws', 'access_key_id')
@@ -80,11 +80,11 @@ def main(argv):
         backups_to_do = get_backups_to_do()
         if backups_to_do is None:
             message_info('Backups in S3 are already up-to-date. Nothing to do')
-            sys.exit(0)
+            util.sys_exit(0)
         else:
             message_info('There are backups/deletions to do')
             message_info('Backup plan details: ' + str(backups_to_do))
-            sys.exit(0)
+            util.sys_exit(0)
 
     # If we're posting to S3 and deleting the ZIP file, then utility has been run only for purpose of
     # posting to S3. See if there are posts to be done and exit if not
@@ -92,7 +92,7 @@ def main(argv):
         backups_to_do = get_backups_to_do()
         if backups_to_do is None:
             message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
-            sys.exit(0)
+            util.sys_exit(0)
 
     # If user specified a directory with set of already-created get_*.py utilities output files to use, then
     # do not run get_*.py data collection utilities, just use that
@@ -138,7 +138,7 @@ def main(argv):
             shutil.rmtree(g.temp_directory)
             message_info('Temporary output directory deleted')
 
-    sys.exit(0)
+    util.sys_exit(0)
 
 
 def upload_to_s3(folder_name, output_filename):
@@ -241,7 +241,7 @@ def get_schedules_from_ini():
         if len(schedule_parms) != 3:
             message_error("ccb_backup.ini [schedules] entry '" + schedule[0] + '=' + schedule[1] + "' is invalid. " \
                 "Must contain 3 comma-separated fields. Aborting!")
-            sys.exit(1)
+            util.sys_exit(1)
         folder_name = schedule_parms[0].strip()
         delta_time_string = schedule_parms[1].strip()
         num_files_to_keep_string = schedule_parms[2].strip()
@@ -250,16 +250,16 @@ def get_schedules_from_ini():
         except:
             message_error("ccb_backup.ini [schedules] entry '" + schedule[0] + '=' + schedule[1] + "' is " \
                 "invalid. '" + num_files_to_keep_string + "' must be a positive integer")
-            sys.exit(1)
+            util.sys_exit(1)
         if num_files_to_keep < 0:
                 message_error("ccb_backup.ini [schedules] entry '" + schedule[0] + '=' + schedule[1] + "' is " \
                 "invalid. Specified a negative number of files to keep")
-                sys.exit(1)
+                util.sys_exit(1)
         backup_after_datetime = now_minus_delta_time(delta_time_string)
         if backup_after_datetime is None:
             message_error("ccb_backup.ini [schedules] entry '" + schedule[0] + '=' + schedule[1] + "' contains " \
                 "an invalid interval between backups '" + delta_time_string + "'. Aborting!")
-            sys.exit(1)
+            util.sys_exit(1)
         schedules.append({'folder_name': folder_name, 'backup_after_datetime': backup_after_datetime,
             'num_files_to_keep': num_files_to_keep})
     return schedules

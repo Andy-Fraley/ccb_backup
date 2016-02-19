@@ -85,7 +85,7 @@ def main(argv):
         g.ccb_api_password)
     if input_filename is None:
         logging.error('CCB REST API call for event_profiles failed. Aborting!')
-        sys.exit(1)
+        util.sys_exit(1)
 
     # Properties to peel off each 'event' node in XML
     list_event_props = [
@@ -154,7 +154,7 @@ def main(argv):
                             if first_chunk:
                                 if chunk[:13] != '"Event Name",':
                                     logging.error('Mis-formed calendared events CSV returned. Aborting!')
-                                    sys.exit(1)
+                                    util.sys_exit(1)
                                 first_chunk = False
                             temp.write(chunk)
                     temp.flush()
@@ -192,6 +192,8 @@ def main(argv):
 
     logging.info('Event profile data written to ' + output_events_filename)
     logging.info('Attendance data written to ' + output_attendance_filename)
+
+    util.sys_exit(0)
 
 
 def retrieve_attendance(csv_writer, event_id_list, date, start_time, attendance):

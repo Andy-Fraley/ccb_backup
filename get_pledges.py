@@ -98,7 +98,7 @@ def main(argv):
                 pledge_summary_succeeded = True
         if not pledge_summary_succeeded:
             logging.error('Pledge Summary retrieval failure. Aborting!')
-            sys.exit(1)
+            util.sys_exit(1)
         csv_reader = csv.reader(StringIO.StringIO(pledge_summary_response.text.encode('ascii', 'ignore')))
         header_row = True
         list_pledge_categories = []
@@ -119,7 +119,7 @@ def main(argv):
             pledge_categories_str = match_report_options.group(1)
         else:
             logging.error('Error retrieving report settings page. Aborting!')
-            sys.exit(1)
+            util.sys_exit(1)
         dict_pledge_categories = {}
         root_str = ''
         for option_match in re.finditer(r'<option\s+value=\\"([0-9]+)\\"\s*>([^<]*)<\\/option>',
@@ -170,6 +170,8 @@ def main(argv):
                     logging.warning('Unknown pledge category. ' + pledge_category)
 
     logging.info('Pledge details retrieved successfully and written to ' + output_filename)
+
+    util.sys_exit(0)
 
 
 if __name__ == "__main__":

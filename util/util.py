@@ -10,6 +10,11 @@ import requests
 import tempfile
 
 
+def sys_exit(level=0):
+    logging.shutdown()
+    sys.exit(level)
+
+
 def set_logger(message_level='Warning', message_output_filename=None, program_filename=None):
     # Set logging level
     if message_level is not None:

@@ -74,9 +74,11 @@ def main(argv):
                     csv_writer.writerow(row)
             if not individual_detail_succeeded:
                 logging.error('Individual Detail retrieval failed')
-                sys.exit(1)
+                util.sys_exit(1)
             else:
                 logging.info('Individual info successfully retrieved into file ' + output_filename)
+
+    util.sys_exit(0)
 
 
 if __name__ == "__main__":

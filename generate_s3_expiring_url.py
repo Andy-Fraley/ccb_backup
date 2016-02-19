@@ -38,15 +38,17 @@ def main(argv):
         expiry_secs = int(g.args.expire_time_in_secs)
     except:
         logging.error("Invalid integer specified for --expire-time-in-secs: '" + g.args.expire_time_in_secs + "'")
-        sys.exit(1)
+        util.sys_exit(1)
 
     if expiry_secs <= 0:
         logging.error("Specified --expire-time-in-secs must be positive integer: '" + g.args.expire_time_in_secs + "'")
-        sys.exit(1)
+        util.sys_exit(1)
 
     url = s3Client.generate_presigned_url('get_object', Params = {'Bucket': bucket_name, 'Key': g.args.s3_filename},
         ExpiresIn = expiry_secs)
     print url
+
+    util.sys_exit(0)
 
 
 if __name__ == "__main__":
