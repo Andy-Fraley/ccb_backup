@@ -23,13 +23,24 @@ class g:
     message_output_filename = None
     aws_access_key_id = None
     aws_secret_access_key = None
-    region_name = None
-    bucket_name = None
+    aws_region_name = None
+    aws_s3_bucket_name = None
     reuse_output_filename = None
+    backup_data_sets_dict = None
 
 
 def main(argv):
     global g
+
+    # Determine which data sets we're backing up
+    g.backup_data_sets_dict = {
+        'individuals': [True, None],
+        'groups': [True, 'participants'],
+        'attendance': [True, 'events'],
+        'pledges': [True, None],
+        'contributions': [True, None]
+    }
+    backup_data_sets_str = ' '.join([x.upper() for x in g.backup_data_sets_dict])
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--output-filename', required=False,
@@ -49,8 +60,19 @@ def main(argv):
     parser.add_argument('--show-backups-to-do', action='store_true', help='If specified, the ONLY thing that is ' +
         'done is backup posts and deletions are calculated and displayed. Used for testing')
     parser.add_argument('--all-time', action='store_true', help='Normally, attendance data is only archived for ' + \
-        'current year (figuring earlier backups covered earlier years). But setting this flag, collects ' \
-        'attendance data note just for this year but across all years')
+        'current year (figuring earlier backups covered earlier years). But specifying this flag, collects ' \
+        'attendance data not just for this year but across all years')
+    parser.add_argument('--backup-data-sets', required=False, nargs='*', default=argparse.SUPPRESS,
+        help='If unspecified, *all* CCB data is backed up. If specified then one or more of the following ' \
+        'data sets must be specified and only the specified data sets are backed up: ' + backup_data_sets_str)
+    parser.add_argument('--zip-file-password', required=False, help='If provided, overrides password used to encryt ' \
+        'zip file that is created that was specified in ccb_backup.ini')
+    parser.add_argument('--aws-s3-bucket-name', required=False, help='If provided, overrides AWS S3 bucket where ' \
+        'output backup zip files are stored')
+    parser.add_argument('--notification-emails', required=False, nargs='*', default=argparse.SUPPRESS,
+        help='If specified, list of email addresses that are emailed upon successful upload to AWS S3, along with ' \
+        'accessor link to get at the backup zip file (which is encrypted)')
+
     g.args = parser.parse_args()
 
     g.program_filename = os.path.basename(__file__)
@@ -69,6 +91,21 @@ def main(argv):
 
     util.set_logger(message_level, g.message_output_filename, os.path.basename(__file__))
 
+    # If specified, validate list of backup_data_sets we're backing up
+    if 'backup_data_sets' in vars(g.args):
+        # If specifying individual data sets to backup, start assuming we're backing up none of them
+        for data_set_name in g.backup_data_sets_dict:
+            g.backup_data_sets_dict[data_set_name][0] = False
+        for backup_data_set in g.args.backup_data_sets:
+            backup_data_set_str = backup_data_set.lower()
+            if backup_data_set_str not in g.backup_data_sets_dict:
+                message_error("Specified --backup-data-sets value '" + backup_data_set + "' must be one of: " + \
+                    backup_data_sets_str + '. Aborting!')
+                sys.exit(1)
+            else:
+                g.backup_data_sets_dict[backup_data_set_str][0] = True
+
+    # Don't do work that'd just get deleted
     if not g.args.post_to_s3 and g.args.delete_zip:
         message_error('Does not make sense to create zip file and delete it without posting to AWS S3. Aborting!')
         util.sys_exit(1)
@@ -76,8 +113,16 @@ def main(argv):
     # Load AWS creds which are used for checking need for backup and posting backup file
     g.aws_access_key_id = util.get_ini_setting('aws', 'access_key_id')
     g.aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key')
-    g.region_name = util.get_ini_setting('aws', 'region_name')
-    g.bucket_name = util.get_ini_setting('aws', 'bucket_name')
+    g.aws_region_name = util.get_ini_setting('aws', 'region_name')
+    if g.args.aws_s3_bucket_name is not None:
+        g.aws_s3_bucket_name = g.args.aws_s3_bucket_name
+    else:
+        g.aws_s3_bucket_name = util.get_ini_setting('aws', 's3_bucket_name')
+
+    if g.args.zip_file_password is not None:
+        g.zip_file_password = g.args.zip_file_password
+    else:
+        g.zip_file_password = util.get_ini_setting('zip_file', 'password')
 
     # Start with assumption no backups to do
     backups_to_do = None
@@ -93,13 +138,15 @@ def main(argv):
             message_info('Backup plan details: ' + str(backups_to_do))
             util.sys_exit(0)
 
+    # See if there are backups to do
+    backups_to_do = get_backups_to_do()
+
     # If we're posting to S3 and deleting the ZIP file, then utility has been run only for purpose of
     # posting to S3. See if there are posts to be done and exit if not
-    if g.args.post_to_s3 and g.args.delete_zip:
-        backups_to_do = get_backups_to_do()
-        if backups_to_do is None:
-            message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
-            util.sys_exit(0)
+    if g.args.post_to_s3 and g.args.delete_zip and backups_to_do is None:
+        message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
+        util.sys_exit(0)
+
 
     # If user specified a directory with set of already-created get_*.py utilities output files to use, then
     # do not run get_*.py data collection utilities, just use that
@@ -108,11 +155,9 @@ def main(argv):
     else:
         # Run get_XXX.py utilities into datetime_stamped CSV output files and messages_output.log output in
         # temp directory
-        run_util('individuals')
-        run_util('groups', ['groups', 'participants'])
-        run_util('attendance', ['attendance', 'events'])
-        run_util('pledges')
-        run_util('contributions')
+        for data_set_name in g.backup_data_sets_dict:
+            if g.backup_data_sets_dict[data_set_name][0]:
+                run_util(data_set_name, g.backup_data_sets_dict[data_set_name][1])
         message_info('Finished all data collection')
 
     # Create output ZIP file
@@ -120,8 +165,7 @@ def main(argv):
         output_filename = g.args.output_filename
     else:
         output_filename = './tmp/ccb_backup_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
-    zip_password = util.get_ini_setting('zip_file', 'password')
-    exec_zip_list = ['/usr/bin/zip', '-P', zip_password, '-j', '-r', output_filename, g.temp_directory + '/']
+    exec_zip_list = ['/usr/bin/zip', '-P', g.zip_file_password, '-j', '-r', output_filename, g.temp_directory + '/']
     message_info('Zipping data collection results files')
     exit_status = subprocess.call(exec_zip_list)
     if exit_status == 0:
@@ -131,12 +175,23 @@ def main(argv):
 
     # Push ZIP file into appropriate schedule folders (daily, weekly, monthly, etc.) and then delete excess
     # backups in each folder
+    list_completed_backups = []
+    if 'notification_emails' in vars(g.args):
+        list_notification_emails = g.args.notification_emails
+    else:
+        list_notification_emails = None
     if backups_to_do is not None:
         for folder_name in backups_to_do:
             if backups_to_do[folder_name]['do_backup']:
-                upload_to_s3(folder_name, output_filename)
+                s3_key = upload_to_s3(folder_name, output_filename)
+                expiry_days = {'daily':1, 'weekly':7, 'monthly':31}[folder_name]
+                expiring_url = gen_s3_expiring_url(s3_key, expiry_days)
+                message_info('Backup URL ' + expiring_url + ' is valid for ' + str(expiry_days) + ' days')
+                list_completed_backups.append([folder_name, expiring_url, expiry_days])
             for item_to_delete in backups_to_do[folder_name]['files_to_delete']:
                 delete_from_s3(item_to_delete)
+        if list_notification_emails is not None:
+            send_email_notification(list_completed_backups, list_notification_emails)
 
     # If user specified the source directory, don't delete it!  And if user asked not to retain temp directory,
     # don't delete it!
@@ -159,11 +214,22 @@ def upload_to_s3(folder_name, output_filename):
 
     s3_key = folder_name + '/' + g.reuse_output_filename
     s3 = boto3.resource('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
-        region_name=g.region_name)
+        region_name=g.aws_region_name)
     data = open(output_filename, 'rb')
-    bucket = s3.Bucket(g.bucket_name)
+    bucket = s3.Bucket(g.aws_s3_bucket_name)
     bucket.put_object(Key=s3_key, Body=data)
     message_info('Uploaded to S3: ' + s3_key)
+    return s3_key
+
+
+def gen_s3_expiring_url(s3_key, expiry_days):
+    global g
+
+    s3Client = boto3.client('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
+        region_name=g.aws_region_name)
+    url = s3Client.generate_presigned_url('get_object', Params = {'Bucket': g.aws_s3_bucket_name, 'Key': s3_key},
+        ExpiresIn = expiry_days * 24 * 60)
+    return url
 
 
 def delete_from_s3(item_to_delete):
@@ -172,15 +238,28 @@ def delete_from_s3(item_to_delete):
     message_info('Deleted from S3: ' + item_to_delete_key)
 
 
+def send_email_notification(list_completed_backups, list_notification_emails):
+    body = ''
+    sep = ''
+    for completed_backup in list_completed_backups:
+        folder_name = completed_backup[0]
+        url = completed_backup[1]
+        expiry_days = completed_backup[2]
+        body = body + sep + 'Completed ' + folder_name + ' backup which is accessible at ' + url + ' for ' + \
+            str(expiry_days) + ' days.'
+        sep = '\r\n\r\n'
+    util.send_email(list_notification_emails, 'Backup(s) completed', body)
+
+
 def get_backups_to_do():
     global g
 
     schedules_by_folder_name = {x['folder_name']:x for x in get_schedules_from_ini()}
     s3 = boto3.resource('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
-        region_name=g.region_name)
+        region_name=g.aws_region_name)
 
     # In S3, folder items end with '/', whereas files do not
-    file_items = [item for item in s3.Bucket(g.bucket_name).objects.all() if item.key[-1] != '/']
+    file_items = [item for item in s3.Bucket(g.aws_s3_bucket_name).objects.all() if item.key[-1] != '/']
     files_per_folder_dict = {}
     for file_item in file_items:
         path_sects = file_item.key.split('/')
@@ -304,7 +383,7 @@ def now_minus_delta_time(delta_time_string):
             datetime.timedelta(seconds=slop)
 
 
-def run_util(util_name, output_pair=None):
+def run_util(util_name, second_util_name=None):
     global g
 
     if util_name == 'attendance' and g.args.all_time:
@@ -315,11 +394,11 @@ def run_util(util_name, output_pair=None):
     datetime_stamp = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     util_py = 'get_' + util_name + '.py'
     fullpath_util_py = os.path.dirname(os.path.realpath(__file__)) + '/' + util_py
-    if output_pair is not None:
-        output_filename1 = g.temp_directory + '/' + output_pair[0] + '_' + datetime_stamp + '.csv'
-        output_filename2 = g.temp_directory + '/' + output_pair[1] + '_' + datetime_stamp + '.csv'
-        outputs_list = ['--output-' + output_pair[0] + '-filename', output_filename1,
-            '--output-' + output_pair[1] + '-filename', output_filename2]
+    if second_util_name is not None:
+        output_filename1 = g.temp_directory + '/' + util_name + '_' + datetime_stamp + '.csv'
+        output_filename2 = g.temp_directory + '/' + second_util_name + '_' + datetime_stamp + '.csv'
+        outputs_list = ['--output-' + util_name + '-filename', output_filename1,
+            '--output-' + second_util_name + '-filename', output_filename2]
         message_info('Running ' + util_py + ' with output files ' + output_filename1 + ' and ' + \
             output_filename2)
     else:

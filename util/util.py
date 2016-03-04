@@ -57,7 +57,6 @@ def test_write(filename):
         os.remove(filename)
 
 
-
 def get_ini_setting(section, option):
     config_file_path = os.path.dirname(os.path.abspath(__file__)) + '/../ccb_backup.ini'
     config_parser = ConfigParser.ConfigParser()
@@ -66,6 +65,30 @@ def get_ini_setting(section, option):
     if ret_val == '':
         ret_val = None
     return ret_val
+
+
+def send_email(recipient, subject, body):
+    import smtplib
+
+    gmail_user = get_ini_setting('notification_emails', 'gmail_user')
+    if gmail_user is not None:
+        gmail_password = get_ini_setting('notification_emails', 'gmail_password')
+        if gmail_password is None:
+            return
+
+    FROM = gmail_user
+    TO = recipient if type(recipient) is list else [recipient]
+    SUBJECT = subject
+    TEXT = body
+
+    # Prepare actual message
+    message = """\From: %s\nTo: %s\nSubject: %s\n\n%s
+    """ % (FROM, ", ".join(TO), SUBJECT, TEXT)
+    server_ssl = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+    server_ssl.ehlo() # optional, called by login()
+    server_ssl.login(gmail_user, gmail_password)
+    server_ssl.sendmail(FROM, TO, message)
+    server_ssl.close()
 
 
 def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):
