@@ -163,6 +163,13 @@ def main(argv):
     # Create output ZIP file
     if g.args.output_filename is not None:
         output_filename = g.args.output_filename
+    elif g.args.delete_zip:
+        # We're deleting it when we're done, so we don't care about its location/name. Grab temp filename
+        tmp_file = tempfile.NamedTemporaryFile(prefix='ccb_backup_', suffix='.zip', delete=False)
+        output_filename = tmp_file.name
+        tmp_file.close()
+        os.remove(output_filename)
+        print 'Temp filename: ' + output_filename
     else:
         output_filename = './tmp/ccb_backup_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
     exec_zip_list = ['/usr/bin/zip', '-P', g.zip_file_password, '-j', '-r', output_filename, g.temp_directory + '/']
