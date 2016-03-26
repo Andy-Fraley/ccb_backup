@@ -111,18 +111,18 @@ def main(argv):
         util.sys_exit(1)
 
     # Load AWS creds which are used for checking need for backup and posting backup file
-    g.aws_access_key_id = util.get_ini_setting('aws', 'access_key_id')
-    g.aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key')
-    g.aws_region_name = util.get_ini_setting('aws', 'region_name')
+    g.aws_access_key_id = util.get_ini_setting('aws', 'access_key_id', False)
+    g.aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key', False)
+    g.aws_region_name = util.get_ini_setting('aws', 'region_name', False)
     if g.args.aws_s3_bucket_name is not None:
         g.aws_s3_bucket_name = g.args.aws_s3_bucket_name
     else:
-        g.aws_s3_bucket_name = util.get_ini_setting('aws', 's3_bucket_name')
+        g.aws_s3_bucket_name = util.get_ini_setting('aws', 's3_bucket_name', False)
 
     if g.args.zip_file_password is not None:
         g.zip_file_password = g.args.zip_file_password
     else:
-        g.zip_file_password = util.get_ini_setting('zip_file', 'password')
+        g.zip_file_password = util.get_ini_setting('zip_file', 'password', False)
 
     # Start with assumption no backups to do
     backups_to_do = None

@@ -27,10 +27,10 @@ def main(argv):
 
     util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
-    aws_access_key_id = util.get_ini_setting('aws', 'access_key_id')
-    aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key')
-    region_name = util.get_ini_setting('aws', 'region_name')
-    bucket_name = util.get_ini_setting('aws', 'bucket_name')
+    aws_access_key_id = util.get_ini_setting('aws', 'access_key_id', False)
+    aws_secret_access_key = util.get_ini_setting('aws', 'secret_access_key', False)
+    region_name = util.get_ini_setting('aws', 'region_name', False)
+    bucket_name = util.get_ini_setting('aws', 's3_bucket_name', False)
 
     s3Client = boto3.client('s3', aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key,
         region_name=region_name)

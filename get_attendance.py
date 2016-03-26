@@ -44,11 +44,11 @@ def main(argv):
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
-    g.ccb_subdomain = util.get_ini_setting('ccb', 'subdomain')
-    ccb_app_username = util.get_ini_setting('ccb', 'app_username')
-    ccb_app_password = util.get_ini_setting('ccb', 'app_password')
-    g.ccb_api_username = util.get_ini_setting('ccb', 'api_username')
-    g.ccb_api_password = util.get_ini_setting('ccb', 'api_password')
+    g.ccb_subdomain = util.get_ini_setting('ccb', 'subdomain', False)
+    ccb_app_username = util.get_ini_setting('ccb', 'app_username', False)
+    ccb_app_password = util.get_ini_setting('ccb', 'app_password', False)
+    g.ccb_api_username = util.get_ini_setting('ccb', 'api_username', False)
+    g.ccb_api_password = util.get_ini_setting('ccb', 'api_password', False)
 
     util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
