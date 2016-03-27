@@ -27,6 +27,7 @@ class g:
     aws_s3_bucket_name = None
     reuse_output_filename = None
     backup_data_sets_dict = None
+    run_util_errors = None
 
 
 def main(argv):
@@ -155,6 +156,7 @@ def main(argv):
     else:
         # Run get_XXX.py utilities into datetime_stamped CSV output files and messages_output.log output in
         # temp directory
+        g.run_util_errors = []
         for data_set_name in g.backup_data_sets_dict:
             if g.backup_data_sets_dict[data_set_name][0]:
                 run_util(data_set_name, g.backup_data_sets_dict[data_set_name][1])
@@ -246,8 +248,11 @@ def delete_from_s3(item_to_delete):
 
 
 def send_email_notification(list_completed_backups, list_notification_emails):
+    global g
+
     body = ''
     sep = ''
+    backup_completed_str = 'Backup(s) completed'
     for completed_backup in list_completed_backups:
         folder_name = completed_backup[0]
         url = completed_backup[1]
@@ -255,7 +260,11 @@ def send_email_notification(list_completed_backups, list_notification_emails):
         body = body + sep + 'Completed ' + folder_name + ' backup which is accessible at ' + url + ' for ' + \
             str(expiry_days) + ' days.'
         sep = '\r\n\r\n'
-    util.send_email(list_notification_emails, 'Backup(s) completed', body)
+    if g.run_util_errors is not None and len(g.run_util_errors) > 0:
+        body = body + sep + 'There were errors running the following utility(s): ' + ', '.join(g.run_util_errors) + \
+            '. See messages_xxx.log in backup zip file for details.'
+        backup_completed_str = backup_completed_str + ' with errors'
+    util.send_email(list_notification_emails, backup_completed_str, body)
 
 
 def get_backups_to_do():
@@ -419,6 +428,7 @@ def run_util(util_name, second_util_name=None):
         message_info('Successfully ran ' + util_py)
     else:
         message_warning('Error running ' + util_py + '. Exit status ' + str(exit_status))
+        g.run_util_errors.append(util_py)
 
 
 def message_info(s):

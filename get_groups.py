@@ -34,11 +34,11 @@ def main(argv):
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
+
     ccb_subdomain = util.get_ini_setting('ccb', 'subdomain', False)
     ccb_api_username = util.get_ini_setting('ccb', 'api_username', False)
     ccb_api_password = util.get_ini_setting('ccb', 'api_password', False)
-
-    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     # Set groups and participant filenames and test validity
     if g.args.output_groups_filename is not None:

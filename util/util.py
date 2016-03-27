@@ -8,6 +8,7 @@ import sys
 import re
 import requests
 import tempfile
+from xml.etree import ElementTree
 
 
 def sys_exit(level=0):
@@ -58,7 +59,6 @@ def test_write(filename):
 
 
 def get_ini_setting(section, option, none_allowable=True):
-    print 'get_ini_setting(' + section + ',' + option + ',' + str(none_allowable) + ')'
     config_file_path = os.path.abspath(os.path.dirname(os.path.abspath(__file__)) + '/../ccb_backup.ini')
     if not os.path.isfile(config_file_path):
         logging.error("Required ini file '" + config_file_path + "' is missing. Clone file 'ccb_backup__sample.ini' " +
@@ -135,10 +135,31 @@ def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_us
                 if chunk: # filter out keep-alive new chunks
                     temp.write(chunk)
             temp.flush()
-        return input_filename
+        rest_api_errors = get_errors_from_rest_xml(input_filename)
+        if rest_api_errors is None:
+            return input_filename
+        else:
+            logging.error('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed with errors: '
+                + rest_api_errors)
+            sys.exit(1)
     else:
-        logging.warning('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed')
+        logging.error('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed with HTTP status ' +
+            str(response.status_code))
+        sys.exit(1)
+
+
+def get_errors_from_rest_xml(input_filename):
+    errors_str = ''
+    xml_tree = ElementTree.parse(input_filename)
+    xml_root = xml_tree.getroot()
+    sep = ''
+    for error in xml_root.findall('./response/errors/error'):
+        errors_str = errors_str + sep + error.text
+        sep = '; '
+    if errors_str == '':
         return None
+    else:
+        return errors_str
 
 
 def get_elem_id_and_props(elem, list_props):

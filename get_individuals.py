@@ -29,11 +29,11 @@ def main(argv):
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
+
     ccb_app_username = util.get_ini_setting('ccb', 'app_username', False)
     ccb_app_password = util.get_ini_setting('ccb', 'app_password', False)
     ccb_subdomain = util.get_ini_setting('ccb', 'subdomain', False)
-
-    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     curr_date_str = datetime.datetime.now().strftime('%m/%d/%Y')
 

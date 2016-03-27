@@ -44,13 +44,13 @@ def main(argv):
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
+    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
+
     g.ccb_subdomain = util.get_ini_setting('ccb', 'subdomain', False)
     ccb_app_username = util.get_ini_setting('ccb', 'app_username', False)
     ccb_app_password = util.get_ini_setting('ccb', 'app_password', False)
     g.ccb_api_username = util.get_ini_setting('ccb', 'api_username', False)
     g.ccb_api_password = util.get_ini_setting('ccb', 'api_password', False)
-
-    util.set_logger(message_level, g.args.message_output_filename, os.path.basename(__file__))
 
     datetime_now = datetime.datetime.now()
     curr_date_str = datetime_now.strftime('%m/%d/%Y')
