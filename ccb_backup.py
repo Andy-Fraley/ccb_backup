@@ -194,6 +194,7 @@ def main(argv):
             if backups_to_do[folder_name]['do_backup']:
                 s3_key = upload_to_s3(folder_name, output_filename)
                 expiry_days = {'daily':1, 'weekly':7, 'monthly':31}[folder_name]
+                message_info('Debug: ' + folder_name + ', ' + str(expiry_days))
                 expiring_url = gen_s3_expiring_url(s3_key, expiry_days)
                 message_info('Backup URL ' + expiring_url + ' is valid for ' + str(expiry_days) + ' days')
                 list_completed_backups.append([folder_name, expiring_url, expiry_days])
@@ -233,6 +234,8 @@ def upload_to_s3(folder_name, output_filename):
 
 def gen_s3_expiring_url(s3_key, expiry_days):
     global g
+
+    message_info('Debug: ' + str(expiry_days) + ', ' + str(expiry_days * 24 * 60))
 
     s3Client = boto3.client('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
         region_name=g.aws_region_name)
