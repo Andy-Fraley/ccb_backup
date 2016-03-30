@@ -3,7 +3,7 @@ Data retrieval and backup utilities for Church Community Builder (CCB)
 
 ###What is Church Community Builder?
 
-[Church Community Builder](https://churchcommunitybuilder.com/) is SaaS for running a church.  The software is able to track church membership, groups within the church including small groups and committees, events including worship service and group meetings along with attendance to those events, and also pledges and giving.  So it's pretty broad and over time ends up containing a lot of key information to the church.
+[Church Community Builder](https://churchcommunitybuilder.com/) is SaaS for running a church.  The software is able to track church membership, groups within the church including small groups and committees, events including worship service and group meetings along with attendance to those events, and also pledges and giving.  So it's pretty broad in its functionality and ends up containing a lot of key information to the church.
 
 #Xxx
 
