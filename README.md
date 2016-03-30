@@ -1,5 +1,7 @@
 # ccb_backup
-Backup utilities for Church Community Builder (CCB)
+Data retrieval and backup utilities for Church Community Builder (CCB)
+
+#Xxx
 
 STATUS
 - 2016-01-31 All utilities moved to ccb_backup.ini file for username/password and other key configuration settings.
