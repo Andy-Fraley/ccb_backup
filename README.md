@@ -13,13 +13,17 @@ However, there's two areas where CCB could stand to have more/better functionali
 2. Ability to easily export ALL data in order to do an outside-of-CCB backup of the church's data that is stored in CCB
 
 To work around these two issues, we've built a set of backup and data export tools for CCB that we use for both purposes.  They allow you to extract CSV data sets for:
-* Individuals (**get_attendance.py**. _NOTE - "People", not "Individuals" is the CCB object name_)
+* Individuals (**get_individuals.py**. _NOTE - "People", not "Individuals" is the CCB object name_)
 * Groups (**get_groups.py**)
 * Attendance & Events (**get_attendance.py**)
 * Pledges (**get_pledges.py**)
 * Contributions (**get_contributions.py**)
 
-They're written in Python (2.x).
+On top of these data retrieval utilities, there's a backup utility, **ccb_backup.py**, which uses the data retrieval utilities listed above to export all of the data as a series of CSV files and then ZIP's them up (encrypted) and can even push the passworded backup ZIP file to Amazon Web Services (AWS) S3.  The backup utility can be set up on cron and configured to do things like keep a daily backup for 7 days, keep a weekly backup for 5 weeks, and keep a monthly backup forever (which is how we have ours configured).
+
+All of these utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS.
+
+### How to install and configure the ccb_backup utility set
 
 #Xxx
 
