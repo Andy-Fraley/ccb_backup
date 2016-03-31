@@ -26,6 +26,11 @@ For example, to pull a flat list of all People (individuals) in your CCB account
 python get_individuals.py
 ```
 
+By default, **get_individuals.py**, and all get_XXX.py data retrieval utilities will default the output file to a file named ./tmp/individuals_YYYYMMDDHHMMSS.csv (and will expect a ./tmp subdirectory to exist).  If you want the output file to be foobar.csv instead, just specify the output file on the command-line as follows:
+```
+python get_individuals.py --output-filename foobar.csv
+```
+
 On top of these data retrieval utilities, there's a backup utility, **ccb_backup.py**, which uses the data retrieval utilities listed above to export all of the data as a series of CSV files and then ZIP's them up (encrypted) and can even push the passworded backup ZIP file to Amazon Web Services (AWS) S3.  The backup utility can be set up on cron and configured to do things like keep a daily backup for 7 days, keep a weekly backup for 5 weeks, and keep a monthly backup forever (which is how we have ours configured).
 
 All of these utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS.
