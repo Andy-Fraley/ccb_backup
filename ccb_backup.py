@@ -59,7 +59,7 @@ def main(argv):
     parser.add_argument('--retain-temp-directory', action='store_true', help='If specified, the temp directory ' +
         'without output from get_*.py utilities is not deleted')
     parser.add_argument('--show-backups-to-do', action='store_true', help='If specified, the ONLY thing that is ' +
-        'done is backup posts and deletions are calculated and displayed. Used for testing')
+        'done is backup posts and deletions to S3 are calculated and displayed')
     parser.add_argument('--all-time', action='store_true', help='Normally, attendance data is only archived for ' + \
         'current year (figuring earlier backups covered earlier years). But specifying this flag, collects ' \
         'attendance data not just for this year but across all years')
