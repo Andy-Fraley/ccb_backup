@@ -45,48 +45,46 @@ python ccb_backup.py --help
 will show many options for the **ccb_backup.py** utility.  But here's a quick summary of the most important options.
 
 ```
+  --show-backups-to-do  If specified, the ONLY thing that is done is backup
+                        posts and deletions to S3 are calculated and displayed
+```
+
+Usually, AWS S3 is used to store backups.  And there's buckets in S3 for 'daily', 'weekly', and 'monthly' (by default) backups.  Running **ccb_backup.py** with this flag reads from S3 and determines if there are any new backups to do and if so, prints them out.  Else, does nothing.
+
+```
   --post-to-s3          If specified, then the created zip file is posted to
                         Amazon AWS S3 bucket (using bucket URL and password in
                         ccb_backup.ini file)
 ```
 
+If **--post-to-s3** is specified, then the created ZIP file is posted to AWS S3. By default, when this is not specified, only a local ZIP file is created with backup data.
+
 ```
   --delete-zip          If specified, then the created zip file is deleted
                         after posting to S3
-  --source-directory SOURCE_DIRECTORY
-                        If provided, then get_*.py utilities are not executed
-                        to create new output data, but instead files in this
-                        specified directory are used to zip and optionally
-                        post to AWS S3
-  --retain-temp-directory
-                        If specified, the temp directory without output from
-                        get_*.py utilities is not deleted
-  --show-backups-to-do  If specified, the ONLY thing that is done is backup
-                        posts and deletions are calculated and displayed. Used
-                        for testing
+```
+
+Rather than letting lots of backup ZIP files accumulate on the server where **ccb_backup.py** is run to do backups and push to S3, specifying this flag will delete the local ZIP file after it's pushed to AWS S3.
+
+```
   --all-time            Normally, attendance data is only archived for current
                         year (figuring earlier backups covered earlier years).
                         But specifying this flag, collects attendance data not
                         just for this year but across all years
+```
+
+This flag specifies to **get_attendance.py** that it is to collect attendance data for all time (instead of just this year which is default).
+
+```
   --backup-data-sets [BACKUP_DATA_SETS [BACKUP_DATA_SETS ...]]
                         If unspecified, *all* CCB data is backed up. If
                         specified then one or more of the following data sets
                         must be specified and only the specified data sets are
                         backed up: ATTENDANCE INDIVIDUALS CONTRIBUTIONS
                         PLEDGES GROUPS
-  --zip-file-password ZIP_FILE_PASSWORD
-                        If provided, overrides password used to encryt zip
-                        file that is created that was specified in
-                        ccb_backup.ini
-  --aws-s3-bucket-name AWS_S3_BUCKET_NAME
-                        If provided, overrides AWS S3 bucket where output
-                        backup zip files are stored
-  --notification-emails [NOTIFICATION_EMAILS [NOTIFICATION_EMAILS ...]]
-                        If specified, list of email addresses that are emailed
-                        upon successful upload to AWS S3, along with accessor
-                        link to get at the backup zip file (which is
-                        encrypted)
 ```
+
+Normally, all data (ATTENDANCE & Events, INDIVIDUALS, CONTRIBUTIONS, PLEDGES, and GROUPS & Participants) is backed up to a zip file.  However, it's possible using this flag to pull some of the data sets into one backup file and some into another.  For example, many churches tightly restrict who can see CONTRIBUTIONS and PLEDGES data and it's possible to push just that backup data to one backup location visible by a very limited set of people and push the rest of backup data to a more broadly visible location.
 
 All of these utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS.
 
