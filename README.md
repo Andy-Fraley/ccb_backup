@@ -124,7 +124,7 @@ api_username=
 api_password=
 ```
 
-These are CCB logins.  **app_username** and **api_username** are typically email addresses.  The reason **_BOTH_** app and API usernames are needed is because unfortunately, CCB does not expose all of their data via API.  Therefore, when the data is not retrievable using the API, it is retrieved with a bit of web screen scraping and of CCB app itself. (CCB - please improve your API with an API-first approach so that all data is gettable/settable via your API.) The app login must have privilege to read all information retrieved (INDIVIDUALS, GROUPS, ATTENDANCE, EVENTS, CONTRIBUTIONS, PLEDGES).  The API login must have privilege to read the same.
+These are CCB logins.  **app_username** and **api_username** are typically email addresses.  The reason **_BOTH_** app and API usernames are needed is because unfortunately, CCB does not expose all of their data via API.  Therefore, when the data is not retrievable using the API, it is retrieved with a bit of web screen scraping from CCB app itself. (CCB - please improve your API with an API-first approach so that all data is gettable/settable via your API.) The app login must have privilege to read all information retrieved (INDIVIDUALS, GROUPS, ATTENDANCE, EVENTS, CONTRIBUTIONS, PLEDGES).  The API login must have privilege to read the same.
 
 ```
 [ccb]
