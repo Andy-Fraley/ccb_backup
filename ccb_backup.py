@@ -92,7 +92,7 @@ def main(argv):
 
     util.set_logger(message_level, g.message_output_filename, os.path.basename(__file__))
 
-    # If specified, validate list of backup_data_sets we're backing up
+    # If specified, validate list of backup_data_sets that we're backing up
     if 'backup_data_sets' in vars(g.args):
         # If specifying individual data sets to backup, start assuming we're backing up none of them
         for data_set_name in g.backup_data_sets_dict:
