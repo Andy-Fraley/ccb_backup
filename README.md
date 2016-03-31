@@ -31,7 +31,7 @@ By default, **get_individuals.py**, and all get_XXX.py data retrieval utilities 
 python get_individuals.py --output-filename foobar.csv
 ```
 
-All of the utilities allow you to specify output filename(s). (_NOTE: **get_groups.py** outputs two CSVs for groups and participants and **get_attendance.py** outputs two CSVs for attendance and events._) But some of the utilities allow you to control other aspects of data retrieval, for example **get_attendance.py** retrieves attendance data by default for only current year (because attendance data retrieval takes a long time), but you can specify an **--all-time** flag to allow you to pull all attendance data for all events in the system. To see all of the command-line options available for any of the **get_XXX.py** data retrieval utilities, just run:
+All of the utilities allow you to specify output filename(s). (_NOTE: **get_groups.py** outputs two CSVs for groups and participants and **get_attendance.py** outputs two CSVs for attendance and events._) But some of the utilities allow you to control other aspects of data retrieval, for example **get_attendance.py** retrieves attendance data by default for only current year (because attendance data retrieval takes a long time), but you can specify an **--all-time** flag to allow you to pull all attendance data for all events in the system, including all of your worship services. To see all of the command-line options available for any of the **get_XXX.py** data retrieval utilities, just run:
 ```
 python get_XXX.py --help
 ```
