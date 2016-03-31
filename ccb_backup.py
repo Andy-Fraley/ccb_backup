@@ -47,7 +47,7 @@ def main(argv):
     parser.add_argument('--output-filename', required=False,
         help='Output ZIP filename. Defaults to ./tmp/ccb_backup_[datetime_stamp].zip')
     parser.add_argument('--message-output-filename', required=False, help='Filename of message output file. If ' +
-        'unspecified, then messages are written to stderr as well as into the messages_datetime_stamp].log file ' +
+        'unspecified, then messages are written to stderr as well as into the messages_[datetime_stamp].log file ' +
         'that is zipped into the resulting backup file.')
     parser.add_argument('--post-to-s3', action='store_true', help='If specified, then the created zip file is ' +
         'posted to Amazon AWS S3 bucket (using bucket URL and password in ccb_backup.ini file)')
