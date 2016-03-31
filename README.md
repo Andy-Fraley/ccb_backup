@@ -116,20 +116,96 @@ level=Info
 
 The 'level' flag in the '[logging]' section can be set to **Info** (default), **Warning**, or **Error**.  All messages higher than or equal to specified precedence level are output to stdout and message.log file.
 
+```
+[ccb]
+app_username=
+app_password=
+api_username=
+api_password=
+```
 
+These are CCB logins.  **app_username** and **api_username** are typically email addresses.  The reason **_BOTH_** app and API usernames are needed is because unfortunately, CCB does not expose all of their data via API.  Therefore, when the data is not retrievable using the API, it is retrieved with a bit of web screen scraping and of CCB app itself. (CCB - please improve your API with an API-first approach so that all data is gettable/settable via your API.) The app login must have privilege to read all information retrieved (INDIVIDUALS, GROUPS, ATTENDANCE, EVENTS, CONTRIBUTIONS, PLEDGES).  The API login must have privilege to read the same.
 
+```
+[ccb]
+subdomain=
+```
 
-#Xxx
+This is your church's subdomain on CCB. If you login to CCB at **mychurch**.ccbchurch.com, then it is **mychurch**.
 
-STATUS
-- 2016-01-31 All utilities moved to ccb_backup.ini file for username/password and other key configuration settings.
-- 2016-01-29 Fifth utility, get_attendance.py, is working.
-- 2016-01-29 Fourth utility, get_groups.py, is working.
-- 2016-01-22 Third utility, get_contributions.py, is working.
-- 2016-01-22 Second utility, get_individuals.py, is working.
-- 2016-01-22 Initial utility, get_pledges.py, is working.
-- 2016-01-20 These are under development (non-working state) for now.
+```
+[zip_file]
+password=
+```
 
-TODOS
-- Write ccb_backup.py (call get_pledges.py, get_individuals.py, etc. then take all results and ZIP them up
-  into posted backup file into S3)
+This is the password you want to use to encrypt ZIP files created by the **ccb_backup.py** utility.
+
+```
+[aws]
+access_key_id=
+secret_access_key=
+region_name=
+s3_bucket_name=
+```
+
+These are your AWS S3 credentials. The **access_key_id** and **secret_access_key** should correspond to an IAM user that has been granted the following privileges on an S3 bucket you create: **s3:DeleteObject**, **s3:GetObject**, **s3:PutObject**, and **s3:ListBucket**.  Below is a sample AWS S3 bucket policy for a created IAM user 'ccb_backup' (bucket policies are settable under "Properties" on a bucket in the AWS S3 console).
+
+```
+{
+	"Version": "2012-10-17",
+	"Id": "Policy1111111111111",
+	"Statement": [
+		{
+			"Sid": "Stmt1111111111111",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::9999999999:user/ccb_backup"
+			},
+			"Action": [
+				"s3:DeleteObject",
+				"s3:GetObject",
+				"s3:PutObject"
+			],
+			"Resource": "arn:aws:s3:::my-ccb-backups-bucketname/*"
+		},
+		{
+			"Sid": "Stmt2222222222222",
+			"Effect": "Allow",
+			"Principal": {
+				"AWS": "arn:aws:iam::9999999999:user/ccb_backup"
+			},
+			"Action": "s3:ListBucket",
+			"Resource": "arn:aws:s3:::my-ccb-backups-bucketname"
+		}
+	]
+}
+```
+
+Also in your **ccb_backup.ini** file you'll need to configure your backup schedule.  A reasonable one is provided by default:
+```
+[schedules]
+schedule1=daily,1d,7
+schedule2=weekly,1w,5
+schedule3=monthly,1M,0
+```
+
+The **daily**, **weekly**, and **monthly** names must directly correspond to 'daily', 'weekly', and 'monthly' folders that you must create within the S3 bucketname you specified before running **ccb_backup.py** against S3.
+
+The schedule above tells **ccb_backup.py** to post the created ZIP file to the 'daily' folder in the specified S3 bucket if it is more than one day (1d) newer than the most recent backup and delete the oldest backup(s) in that folder if more than 7 exist.  Similarly, it tells **ccb_backup.py** to post the created ZIP file to the 'weekly' folder if more than one week (1w) newer and maintain 5 weekly backups.  And post to 'monthly' if one month (1M) newer than most recent and allow for an infinite (by specifying to keep '0' backup instances in the 'monthly' folder) number of monthly backups. Extending this, you can see how you could keep 'monthly' backups for a year (keep 12) and then keep 'yearly' backups forever, for example.
+
+Finally, you can configure the Gmail box that **ccb_backup.py** will send from:
+```
+[notification_emails]
+gmail_user=my_gmail_address@gmail.com
+gmail_password=my-password
+```
+
+Note that depending how you've configured Gmail security (if 2-step authentication is on, for example), you may need to create a Gmail app password and specify it above.
+
+### Your help
+
+If you have recommended bugfixes or enhancements, please send a pull request.
+
+# Change Log
+
+* 2016-03-31 Initial public release
