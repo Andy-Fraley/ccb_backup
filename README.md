@@ -102,10 +102,22 @@ For those intending to use **ccb_backup.py** to do daily/weekly/monthly backups 
 ### How to install and configure the ccb_backup utility set
 
 The **ccb_backup** utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS. Prerequisites include:
+* MacOS, Ubuntu, or CentOS (if you want to run on Windows or other 'nix platforms, may work...will try and support you)
 * Python 2.x
 * Python packages: requests, boto3, pytz
 
-You can install the **ccb_backup** utilities, just by cloning this git repo or 
+You can install these **ccb_backup** utilities, just by cloning this git repo or using GitHub's "Download ZIP" button and unzipping the files.  Once installed, you need to create your own **ccb_backup.ini** file by copying and editing the **ccb_backup__sample.ini** file included in the **ccb_backup** repo.
+
+Here's some quick guidance on entries required in the **ccb_backup.ini** file.
+```
+[logging]
+level=Info
+```
+
+The 'level' flag in the '[logging]' section can be set to **Info** (default), **Warning**, or **Error**.  All messages higher than or equal to specified precedence level are output to stdout and message.log file.
+
+
+
 
 #Xxx
 
