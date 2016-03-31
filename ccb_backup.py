@@ -240,7 +240,7 @@ def gen_s3_expiring_url(s3_key, expiry_days):
     s3Client = boto3.client('s3', aws_access_key_id=g.aws_access_key_id, aws_secret_access_key=g.aws_secret_access_key,
         region_name=g.aws_region_name)
     url = s3Client.generate_presigned_url('get_object', Params = {'Bucket': g.aws_s3_bucket_name, 'Key': s3_key},
-        ExpiresIn = expiry_days * 24 * 60)
+        ExpiresIn = expiry_days * 24 * 60 * 60)
     return url
 
 
