@@ -92,16 +92,20 @@ This flag specifies to **get_attendance.py** that it is to collect attendance da
 
 Normally, all data (ATTENDANCE & Events, INDIVIDUALS, CONTRIBUTIONS, PLEDGES, and GROUPS & Participants) is backed up to a zip file.  However, it's possible using this flag to pull some of the data sets into one backup file and some into another.  For example, many churches tightly restrict who can see CONTRIBUTIONS and PLEDGES data and it's possible to push just that backup data to one backup location visible by a very limited set of people and push the rest of backup data to a more broadly visible location.
 
-For those indending to wire **ccb_backup.py** do do daily/weekly/monthly backups automatically, using cron, here's a sample crontab entry as an example:
+For those intending to use **ccb_backup.py** to do daily/weekly/monthly backups automatically using cron, here's a sample crontab entry as an example:
 ```
 30 2 * * * /usr/bin/python /home/ccb_backup/src/ccb_backup/ccb_backup.py --post-to-s3 --delete-zip --notification-emails name@email_domain.com > /dev/null 2>&1
 ```
 
-"30 2 * * *" indicates to run nightly at 2:30am.  The **--post-to-s3** and **--delete-zip** flags cause **ccb_backup.py** to post the created ZIP file to AWS S3 and then delete it.  The **--notification-emails name@email_domain.com** causes an email to be sent that confirms successful backup completion or reports backup errors.  And **"> /dev/null 2>&1"** simply causes stdout and stderr output to be ignored.
-
-All of these utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS.
+"30 2 * * *" indicates to run nightly at 2:30am.  The **--post-to-s3** and **--delete-zip** flags cause **ccb_backup.py** to post the created ZIP file to AWS S3 and then delete it.  The **--notification-emails name@email_domain.com** causes an email to be sent that confirms successful backup completion or reports backup errors.  And **"> /dev/null 2>&1"** simply causes stdout and stderr output to be ignored.  You'll need to adjust **/usr/bin/python** to be the location of your Python 2.x executable.  And you'll need to adjust **/home/ccb_backup/src/ccb_backup/ccb_backup.py** to be the location of where you've installed the **ccb_backup** utilities.
 
 ### How to install and configure the ccb_backup utility set
+
+The **ccb_backup** utilities are written in Python (2.x). They should run cross-platform but have only been tested on MacOS, Ubuntu, and CentOS. Prerequisites include:
+* Python 2.x
+* Python packages: requests, boto3, pytz
+
+You can install the **ccb_backup** utilities, just by cloning this git repo or 
 
 #Xxx
 
