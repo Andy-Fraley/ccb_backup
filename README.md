@@ -22,9 +22,9 @@ To work around these two issues, we've built a set of backup and data export too
 We use these data retrieval utilities to pull CSV files which we then load into Excel to do custom reporting.
 
 For example, to pull a flat list of all People (individuals) in your CCB account, just run:
-'''
+```
 python get_individuals.py
-'''
+```
 
 On top of these data retrieval utilities, there's a backup utility, **ccb_backup.py**, which uses the data retrieval utilities listed above to export all of the data as a series of CSV files and then ZIP's them up (encrypted) and can even push the passworded backup ZIP file to Amazon Web Services (AWS) S3.  The backup utility can be set up on cron and configured to do things like keep a daily backup for 7 days, keep a weekly backup for 5 weeks, and keep a monthly backup forever (which is how we have ours configured).
 
