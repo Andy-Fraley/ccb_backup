@@ -106,7 +106,7 @@ The **ccb_backup** utilities are written in Python (2.x). They should run cross-
 * Python 2.x
 * Python packages: requests, boto3, pytz
 
-You can install these **ccb_backup** utilities, just by cloning this git repo or using GitHub's "Download ZIP" button and unzipping the files.  Once installed, you need to create your own **ccb_backup.ini** file by copying and editing the **ccb_backup__sample.ini** file included in the **ccb_backup** repo.
+You can install these **ccb_backup** utilities, just by cloning this git repo or using GitHub's "Download ZIP" button and unzipping the files.  Once installed, you need to create your own **ccb_backup.ini** file by copying and editing the **ccb_backup__sample.ini** file included in this **ccb_backup** repo.
 
 Here's some quick guidance on entries required in the **ccb_backup.ini** file.
 ```
