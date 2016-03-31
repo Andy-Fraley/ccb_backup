@@ -1,21 +1,22 @@
 # ccb_backup
 Data retrieval and backup utilities for Church Community Builder (CCB)
 
-###What is Church Community Builder?
+### What is Church Community Builder?
 
 [Church Community Builder](https://churchcommunitybuilder.com/) is SaaS for running a church.  The software is able to track church membership, groups within the church including small groups and committees, events including worship service and group meetings along with attendance to those events, and also pledges and giving.  So it's pretty broad in its functionality and ends up containing a lot of key information to the church.
+
+### Why were these ccb_backup (including data export facilities) created?
 
 However, there's two areas where CCB could stand to have more/better functionality:
 1. Ability to do truly ad hoc custom reports (the built-in reports in CCB are limited and so is CCB's ability to create custom reports)
 2. Ability to easily export ALL data in order to do a backup of the church's data that is stored in CCB
 
 To work around these two issues, we've built a set of backup and data export tools for CCB that we use for both purposes.  They allow you to extract CSV data sets for:
-* Individuals (People)
-* Groups
-* Attendance
-* Events
-* Pledges
-* Contributions
+* Individuals (get_attendance.py. People is the CCB term)
+* Groups (get_groups.py)
+* Attendance & Events (get_attendance.py)
+* Pledges (get_pledges.py)
+* Contributions (get_contributions.py)
 
 They're written in Python (2.x).
 
