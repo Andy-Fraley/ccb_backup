@@ -9,6 +9,7 @@ import re
 import requests
 import tempfile
 from xml.etree import ElementTree
+import socket
 
 
 def sys_exit(level=0):
@@ -101,6 +102,12 @@ def send_email(recipient, subject, body):
     server_ssl.login(gmail_user, gmail_password)
     server_ssl.sendmail(FROM, TO, message)
     server_ssl.close()
+
+
+def get_ip_address():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))
+    return s.getsockname()[0]
 
 
 def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):

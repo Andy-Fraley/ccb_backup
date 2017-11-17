@@ -264,6 +264,7 @@ def send_email_notification(list_completed_backups, list_notification_emails):
         body = body + sep + 'There were errors running the following utility(s): ' + ', '.join(g.run_util_errors) + \
             '. See messages_xxx.log in backup zip file for details.'
         backup_completed_str = backup_completed_str + ' with errors'
+    body += '\r\n\r\nSent from local IP address ' + util.get_ip_address()
     util.send_email(list_notification_emails, backup_completed_str, body)
 
 
