@@ -69,7 +69,7 @@ def main(argv):
         util.test_write(output_filename)
         with open(output_filename, 'wb') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
-            logging.info('Note that it takes CCB a minute or two to pull retrive all contribution information')
+            logging.info('Note that it takes CCB a minute or two to pull retrieve all contribution information')
             contribution_detail_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
                 data=contribution_detail_request)
             contribution_detail_succeeded = False
