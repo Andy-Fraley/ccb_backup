@@ -211,6 +211,8 @@ def retrieve_attendance(csv_writer, event_id_list, date, start_time, attendance)
     global g
     
     for event_id in reversed(event_id_list):
+        if start_time == 'ALL DAY':
+            start_time = '12:00 AM'
         time_object = time.strptime(str(date) + ' ' + str(start_time), '%Y-%m-%d %I:%M %p')
         occurrence_datetime_string = time.strftime('%Y-%m-%d+%H:%M:00', time_object)
         ccb_rest_service_string = 'attendance_profile&id=' + str(event_id) + '&occurrence=' + \

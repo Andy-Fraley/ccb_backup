@@ -39,7 +39,7 @@ def main(argv):
         'groups': [True, 'participants'],
         'attendance': [True, 'events'],
         'pledges': [True, None],
-        'contributions': [True, None]
+        'transactions': [True, None]
     }
     backup_data_sets_str = ' '.join([x.upper() for x in g.backup_data_sets_dict])
 
