@@ -156,6 +156,7 @@ def main(argv):
     else:
         # Run get_XXX.py utilities into datetime_stamped CSV output files and messages_output.log output in
         # temp directory
+        print 'Running ccb_backup with output to temp directory: ' + g.temp_directory
         g.run_util_errors = []
         for data_set_name in g.backup_data_sets_dict:
             if g.backup_data_sets_dict[data_set_name][0]:
