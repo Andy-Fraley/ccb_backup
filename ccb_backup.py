@@ -193,7 +193,17 @@ def main(argv):
     if backups_to_do is not None:
         for folder_name in backups_to_do:
             if backups_to_do[folder_name]['do_backup']:
-                s3_key = upload_to_s3(folder_name, output_filename)
+                try:
+                    s3_key = upload_to_s3(folder_name, output_filename)
+                except:
+                    message_error('Error uploading ccb_backup zip to S3')
+                    if list_notification_emails is not None:
+                        subject = 'ccb_backup upload to S3 failed'
+                        body = 'ccb_backup upload to S3 failed. Backup results in local temp directory ' + \
+                            g.temp_directory
+                        body += '\r\n\r\nSent from local IP address ' + util.get_ip_address()
+                        util.send_email(list_notification_emails, subject, body)
+                    util.sys_exit(1)
                 expiry_days = {'daily':1, 'weekly':7, 'monthly':31}[folder_name]
                 expiring_url = gen_s3_expiring_url(s3_key, expiry_days)
                 message_info('Backup URL ' + expiring_url + ' is valid for ' + str(expiry_days) + ' days')
