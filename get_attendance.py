@@ -185,14 +185,15 @@ def main(argv):
                     date_column_index = row.index('Date')
                     start_time_column_index = row.index('Start Time')
                 else:
-                    # Retrieve attendees for events which have non-zero number of attendees
-                    if row[attendance_column_index] != '0':
-                        if row[event_name_column_index] in dict_list_event_names:
-                            retrieve_attendance(csv_writer, dict_list_event_names[row[event_name_column_index]],
-                                row[date_column_index], row[start_time_column_index],
-                                row[attendance_column_index])
-                        else:
-                            logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
+                    # Retrieve attendees for 'Worship Service' events which have non-zero number of attendees
+                    if re.search('worship service', row[event_name_column_index], re.IGNORECASE):
+                        if row[attendance_column_index] != '0':
+                            if row[event_name_column_index] in dict_list_event_names:
+                                retrieve_attendance(csv_writer, dict_list_event_names[row[event_name_column_index]],
+                                    row[date_column_index], row[start_time_column_index],
+                                    row[attendance_column_index])
+                            else:
+                                logging.warning("Unrecognized event name '" + row[event_name_column_index] + "'")
 
     # If caller didn't specify input filename, then delete the temporary file we retrieved into
     if g.args.input_events_filename is None:
