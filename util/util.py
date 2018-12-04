@@ -122,11 +122,13 @@ def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):
     login_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/login.php', data=login_request)
     login_succeeded = False
     if login_response.status_code == 200:
-        match_login_info = re.search('<title>Home | Ingomar Church</title>', login_response.text)
-        if match_login_info != None: # If we find logout anchor link in response, then we know login was successful
+        match_login_info = re.search('Welcome to IConnect', login_response.text)
+        if match_login_info != None: # If we find welcome message in response, then we know login was successful
             login_succeeded = True
     if not login_succeeded:
         logging.error('Login to CCB app using username ' + ccb_app_username + ' failed. Aborting!')
+        print 'Login response status code: ' + str(login_response.status_code)
+        print login_response.text.encode('utf-8')
         sys.exit(1)
 
 
