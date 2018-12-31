@@ -10,6 +10,7 @@ import requests
 import tempfile
 from xml.etree import ElementTree
 import socket
+import time
 
 
 def sys_exit(level=0):
@@ -132,7 +133,7 @@ def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):
         sys.exit(1)
 
 
-def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_username, ccb_api_password):
+def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_username, ccb_api_password, retry_num=0):
     logging.info('Retrieving ' + ccb_rest_service_string + ' from CCB REST API')
     response = requests.get('https://' + ccb_subdomain + '.ccbchurch.com/api.php?srv=' + ccb_rest_service_string,
         stream=True, auth=(ccb_api_username, ccb_api_password))
@@ -152,8 +153,19 @@ def ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_us
                 + rest_api_errors)
             sys.exit(1)
     else:
-        logging.error('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed with HTTP status ' +
-            str(response.status_code))
+        if response.status_code == 429:
+            if retry_num >= 3:
+                logging.error('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed ' + \
+                    str(retry_num) + ' times on pause request (HTTP status 429). Giving up...')
+                sys.exit(1)
+            logging.warning('CCB REST API call retrieval for ' + ccb_rest_service_string + ' requested pause for ' + \
+                response.headers['Retry-After'] + ' seconds. Pausing requested time and then retrying...')
+            time.sleep(int(response.headers['Retry-After']))
+            return ccb_rest_xml_to_temp_file(ccb_subdomain, ccb_rest_service_string, ccb_api_username,
+                ccb_api_password, retry_num + 1)
+        else:
+            logging.error('CCB REST API call retrieval for ' + ccb_rest_service_string + ' failed with HTTP status ' +
+                str(response.status_code))
         sys.exit(1)
 
 
