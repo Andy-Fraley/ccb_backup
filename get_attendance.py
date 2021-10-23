@@ -184,9 +184,11 @@ def main(argv):
                     attendance_column_index = row.index('Actual Attendance')
                     date_column_index = row.index('Date')
                     start_time_column_index = row.index('Start Time')
+                    group_name_column_index = row.index('Group Name')
                 else:
                     # Retrieve attendees for 'Worship Service' events which have non-zero number of attendees
-                    if re.search('worship service', row[event_name_column_index], re.IGNORECASE):
+                    # if re.search('worship service', row[event_name_column_index], re.IGNORECASE):
+                    if row[group_name_column_index] == 'Worship Services':
                         if row[attendance_column_index] != '0':
                             if row[event_name_column_index] in dict_list_event_names:
                                 retrieve_attendance(csv_writer, dict_list_event_names[row[event_name_column_index]],

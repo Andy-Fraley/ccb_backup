@@ -4,6 +4,7 @@ ccb_backup.ini
 
 # Any files in local tmp directory
 tmp/
+bak/
 
 #######################################################################################################################
 # Generic Python .gitignore's below
