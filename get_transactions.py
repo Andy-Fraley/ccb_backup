@@ -6,11 +6,11 @@ import sys
 import json
 import datetime
 import csv
-import StringIO
 import logging
 import argparse
 import os
 from util import util
+import io
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
 class g:
@@ -47,7 +47,7 @@ def main(argv):
         else:
             output_filename = './tmp/transactions_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
         util.test_write(output_filename)
-        with open(output_filename, 'wb') as csv_output_file:
+        with open(output_filename, 'w') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             logging.info('Note that it takes CCB a minute or two to pull retrieve all transaction information')
             header_emitted = False
@@ -84,8 +84,7 @@ def main(argv):
                     if transaction_detail_response.text[:12] == 'Name,Campus,':
                         transaction_detail_succeeded = True
                         skipped_first = False
-                        csv_reader = csv.reader(StringIO.StringIO(transaction_detail_response.text.encode('ascii',
-                            'ignore')))
+                        csv_reader = csv.reader(io.StringIO(transaction_detail_response.text))
                         for row in csv_reader:
                             if not header_emitted:
                                 csv_writer.writerow(row)
@@ -96,8 +95,8 @@ def main(argv):
                                 else:
                                     skipped_first = True
                         if not transaction_detail_succeeded:
-                            print transaction_detail_response
-                            print transaction_detail_response.text
+                            print(transaction_detail_response)
+                            print(transaction_detail_response.text)
                             logging.error('Transaction Detail retrieval failed (will time out if too much data '
                                 'retrieved)')
                             util.sys_exit(1)

@@ -8,7 +8,7 @@ import os
 import shutil
 import tempfile
 import subprocess
-import ConfigParser
+import configparser
 import re
 import calendar
 import boto3
@@ -156,7 +156,7 @@ def main(argv):
     else:
         # Run get_XXX.py utilities into datetime_stamped CSV output files and messages_output.log output in
         # temp directory
-        print 'Running ccb_backup with output to temp directory: ' + g.temp_directory
+        print('Running ccb_backup with output to temp directory: ' + g.temp_directory)
         g.run_util_errors = []
         for data_set_name in g.backup_data_sets_dict:
             if g.backup_data_sets_dict[data_set_name][0]:
@@ -172,7 +172,7 @@ def main(argv):
         output_filename = tmp_file.name
         tmp_file.close()
         os.remove(output_filename)
-        print 'Temp filename: ' + output_filename
+        print('Temp filename: ' + output_filename)
     else:
         output_filename = './tmp/ccb_backup_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
     exec_zip_list = ['/usr/bin/zip', '-P', g.zip_file_password, '-j', '-r', output_filename, g.temp_directory + '/']
@@ -351,7 +351,7 @@ def get_backups_to_do():
 
 def get_schedules_from_ini():
     config_file_path = os.path.dirname(os.path.abspath(__file__)) + '/ccb_backup.ini'
-    config_parser = ConfigParser.ConfigParser()
+    config_parser = configparser.ConfigParser()
     config_parser.read(config_file_path)
     schedules = []
     curr_datetime = datetime.datetime.now(pytz.UTC)
@@ -388,7 +388,6 @@ def get_schedules_from_ini():
 def now_minus_delta_time(delta_time_string):
     curr_datetime = datetime.datetime.now(pytz.UTC)
     slop = 15 * 60 # 15 minutes of "slop" allowed in determining new backup is needed
-    # curr_datetime = datetime.datetime(2016, 1, 7, 10, 52, 23, tzinfo=pytz.UTC)
     match = re.match('([1-9][0-9]*)([smhdwMY])', delta_time_string)
     if match is None:
         return None
@@ -463,7 +462,7 @@ def output_message(s, level):
 
     if g.args.message_output_filename is None:
         datetime_stamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print >> sys.stderr, datetime_stamp + ':' + g.program_filename + ':' + level + ':' + s
+        print(datetime_stamp + ':' + g.program_filename + ':' + level + ':' + s, file=sys.stderr)
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@ import sys
 import json
 import datetime
 import csv
-import StringIO
+import io
 import logging
 import argparse
 import os
@@ -60,16 +60,16 @@ def main(argv):
         else:
             output_filename = './tmp/individuals_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
         util.test_write(output_filename)
-        with open(output_filename, 'wb') as csv_output_file:
+        with open(output_filename, 'w') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             logging.info('Note that it takes CCB a minute or two to pull retrieve all individual information')
             individual_detail_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
                 data=individual_detail_request)
             individual_detail_succeeded = False
             if individual_detail_response.status_code == 200 and \
-                individual_detail_response.text[:16] == '"Individual ID",':
+                individual_detail_response.text[:9] == '"Ind ID",':
                 individual_detail_succeeded = True
-                csv_reader = csv.reader(StringIO.StringIO(individual_detail_response.text.encode('ascii', 'ignore')))
+                csv_reader = csv.reader(io.StringIO(individual_detail_response.text))
                 for row in csv_reader:
                     csv_writer.writerow(row)
             if not individual_detail_succeeded:

@@ -6,11 +6,11 @@ import sys
 import json
 import datetime
 import csv
-import StringIO
 import logging
 import argparse
 import os
 from util import util
+import io
 
 # Fake class only for purpose of limiting global namespace to the 'g' object
 class g:
@@ -99,7 +99,7 @@ def main(argv):
         if not pledge_summary_succeeded:
             logging.error('Pledge Summary retrieval failure. Aborting!')
             util.sys_exit(1)
-        csv_reader = csv.reader(StringIO.StringIO(pledge_summary_response.text.encode('ascii', 'ignore')))
+        csv_reader = csv.reader(io.StringIO(pledge_summary_response.text))
         header_row = True
         list_pledge_categories = []
         for row in csv_reader:
@@ -107,7 +107,7 @@ def main(argv):
                 assert row[0] == 'COA Category'
                 header_row = False
             else:
-                list_pledge_categories.append(unicode(row[0]))
+                list_pledge_categories.append(str(row[0]))
 
         # Get dictionary of category option IDs
         report_page = http_session.get('https://' + ccb_subdomain + '.ccbchurch.com/service/report_settings.php',
@@ -137,7 +137,7 @@ def main(argv):
         else:
             output_filename = './tmp/pledges_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.csv'
         util.test_write(output_filename)
-        with open(output_filename, 'wb') as csv_output_file:
+        with open(output_filename, 'w') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             for pledge_category in list_pledge_categories:
                 logging.info('Retrieving pledges for ' + pledge_category)
@@ -150,8 +150,7 @@ def main(argv):
                     pledge_detail_succeeded = False
                     if pledge_detail_response.status_code == 200 and pledge_detail_response.text[:8] == 'Name(s),':
                         pledge_detail_succeeded = True
-                        csv_reader = csv.reader(StringIO.StringIO(pledge_detail_response.text.encode('ascii',
-                            'ignore')))
+                        csv_reader = csv.reader(io.StringIO(pledge_detail_response.text))
                         header_row = True
                         for row in csv_reader:
                             if header_row:

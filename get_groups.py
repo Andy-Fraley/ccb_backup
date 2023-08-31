@@ -93,10 +93,10 @@ def main(argv):
     dict_path_ids = {}
     group_id = None
     logging.info('Creating groups and group participants output files.')
-    with open(output_groups_filename, 'wb') as csv_output_groups_file:
+    with open(output_groups_filename, 'w', newline='', encoding='utf-8') as csv_output_groups_file:
         csv_writer_groups = csv.writer(csv_output_groups_file)
         csv_writer_groups.writerow(['id'] + list_group_props)
-        with open(output_participants_filename, 'wb') as csv_output_participants_file:
+        with open(output_participants_filename, 'w', newline='', encoding='utf-8') as csv_output_participants_file:
             csv_writer_participants = csv.writer(csv_output_participants_file)
             csv_writer_participants.writerow(['group_id', 'participant_id', 'participant_type'])
             for event, elem in ElementTree.iterparse(input_filename, events=('start', 'end')):

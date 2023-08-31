@@ -1,6 +1,9 @@
 # Files with private settings (passwords, etc.)
 util/settings.py
 ccb_backup.ini
+README.txt
+venv_3_9_9
+.DS_Store
 
 # Any files in local tmp directory
 tmp/

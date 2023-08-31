@@ -2,7 +2,7 @@
 
 import logging
 import os
-import ConfigParser
+import configparser
 import string
 import sys
 import re
@@ -66,7 +66,7 @@ def get_ini_setting(section, option, none_allowable=True):
         logging.error("Required ini file '" + config_file_path + "' is missing. Clone file 'ccb_backup__sample.ini' " +
             "to create file 'ccb_backup.ini'")
         sys.exit(1)
-    config_parser = ConfigParser.ConfigParser()
+    config_parser = configparser.ConfigParser()
     config_parser.read(config_file_path)
     try:
         ret_val = config_parser.get(section, option).strip()
@@ -128,8 +128,8 @@ def login(http_session, ccb_subdomain, ccb_app_username, ccb_app_password):
             login_succeeded = True
     if not login_succeeded:
         logging.error('Login to CCB app using username ' + ccb_app_username + ' failed. Aborting!')
-        print 'Login response status code: ' + str(login_response.status_code)
-        print login_response.text.encode('utf-8')
+        print('Login response status code: ' + str(login_response.status_code))
+        print(login_response.text.encode('utf-8'))
         sys.exit(1)
 
 

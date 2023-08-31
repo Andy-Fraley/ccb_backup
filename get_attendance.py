@@ -41,6 +41,8 @@ def main(argv):
     parser.add_argument('--all-time', action='store_true', help='Normally, attendance data is only archived for ' + \
         'current year (figuring earlier backups covered earlier years). But setting this flag, collects ' \
         'attendance data note just for this year but across all years')
+    parser.add_argument('--start-date', required=False, help='Date in format YYYYMMDD on which to start ' + \
+                        'worship attendance backups. If specified, overrides --all-time.')
     g.args = parser.parse_args()
 
     message_level = util.get_ini_setting('logging', 'level')
@@ -55,7 +57,10 @@ def main(argv):
     datetime_now = datetime.datetime.now()
     curr_date_str = datetime_now.strftime('%m/%d/%Y')
 
-    if g.args.all_time:
+    if g.args.start_date is not None:
+        start_date_str = g.args.start_date
+        datetime.datetime.strptime(start_date_str, '%m/%d/%Y')
+    elif g.args.all_time:
         start_date_str = '01/01/1990'
     else:
         start_date_str = '01/01/' + datetime_now.strftime('%Y')
@@ -114,7 +119,7 @@ def main(argv):
 
     path = []
     dict_list_event_names = defaultdict(list)
-    with open(output_events_filename, 'wb') as csv_output_events_file:
+    with open(output_events_filename, 'w', newline='', encoding='utf-8') as csv_output_events_file:
         csv_writer_events = csv.writer(csv_output_events_file)
         csv_writer_events.writerow(['event_id'] + list_event_props + ['group_id', 'organizer_id']) # Write header row
         for event, elem in ElementTree.iterparse(input_filename, events=('start', 'end')):
@@ -128,11 +133,19 @@ def main(argv):
                     # Emit 'events' row
                     props_csv = util.get_elem_id_and_props(elem, list_event_props)
                     event_id = props_csv[0] # get_elem_id_and_props() puts 'id' prop at index 0
-                    name = props_csv[1] # Cheating here...we know 'name' prop is index 1
+                    name = props_csv[1].decode('utf-8') # Cheating here...we know 'name' prop is index 1
                     dict_list_event_names[name].append(event_id)
                     props_csv.append(current_group_id)
                     props_csv.append(current_organizer_id)
-                    csv_writer_events.writerow(props_csv)
+
+                    # A bit of a hack to decode bytes to strings for all elements on the CSV row
+                    new_list = []
+                    for x in props_csv:
+                        if isinstance(x, bytes):
+                            x = x.decode('utf-8')
+                        new_list.append(x)
+
+                    csv_writer_events.writerow(new_list)
                     elem.clear() # Throw away 'event' node from memory when done processing it
                 elif full_path == 'ccb_api/response/events/event/group':
                     current_group_id = elem.attrib['id']
@@ -163,16 +176,16 @@ def main(argv):
                     for chunk in event_list_response.iter_content(chunk_size=1024):
                         if chunk: # filter out keep-alive new chunks
                             if first_chunk:
-                                if chunk[:13] != '"Event Name",':
+                                if chunk[:13].decode('utf-8') != '"Event Name",':
                                     logging.error('Mis-formed calendared events CSV returned. Aborting!')
                                     util.sys_exit(1)
                                 first_chunk = False
                             temp.write(chunk)
                     temp.flush()
 
-    with open(input_filename, 'rb') as csvfile:
+    with open(input_filename, 'r') as csvfile:
         csv_reader = csv.reader(csvfile)
-        with open(output_attendance_filename, 'wb') as csv_output_file:
+        with open(output_attendance_filename, 'w', newline='', encoding='utf-8') as csv_output_file:
             csv_writer = csv.writer(csv_output_file)
             csv_writer.writerow(['event_id', 'event_occurrence', 'individual_id', 'count'])
             header_row = True
