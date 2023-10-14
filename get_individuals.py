@@ -65,6 +65,7 @@ def main(argv):
             logging.info('Note that it takes CCB a minute or two to pull retrieve all individual information')
             individual_detail_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
                 data=individual_detail_request)
+            individual_detail_response.encoding = 'utf-8-sig'
             individual_detail_succeeded = False
             if individual_detail_response.status_code == 200 and \
                 individual_detail_response.text[:9] == '"Ind ID",':
