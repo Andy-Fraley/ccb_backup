@@ -167,16 +167,16 @@ def main(argv):
             logging.info('Retrieving list of all scheduled events.  This might take a couple minutes!')
             event_list_response = http_session.post('https://' + g.ccb_subdomain + '.ccbchurch.com/report.php',
                 data=event_list_request)
+            event_list_response.encoding = 'utf-8-sig'
             event_list_succeeded = False
             if event_list_response.status_code == 200:
-                event_list_response.raw.decode_content = True
-                with tempfile.NamedTemporaryFile(delete=False) as temp:
+                with tempfile.NamedTemporaryFile(delete=False, mode='w') as temp:
                     input_filename = temp.name
                     first_chunk = True
-                    for chunk in event_list_response.iter_content(chunk_size=1024):
+                    for chunk in event_list_response.iter_content(chunk_size=1024, decode_unicode=True):
                         if chunk: # filter out keep-alive new chunks
                             if first_chunk:
-                                if chunk[:13].decode('utf-8') != '"Event Name",':
+                                if chunk[:13] != '"Event Name",':
                                     logging.error('Mis-formed calendared events CSV returned. Aborting!')
                                     util.sys_exit(1)
                                 first_chunk = False
@@ -191,6 +191,7 @@ def main(argv):
             header_row = True
             for row in csv_reader:
                 if header_row:
+                    print(row)
                     header_row = False
                     output_csv_header = row
                     event_name_column_index = row.index('Event Name')

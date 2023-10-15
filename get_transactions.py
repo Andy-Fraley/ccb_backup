@@ -79,6 +79,7 @@ def main(argv):
                 logging.info('Retrieving info from ' + start_date_str + ' to ' + end_date_str)
                 transaction_detail_response = http_session.post('https://' + ccb_subdomain + \
                     '.ccbchurch.com/report.php', data=transaction_detail_request)
+                transaction_detail_response.encoding = 'utf-8-sig'
                 transaction_detail_succeeded = False
                 if transaction_detail_response.status_code == 200:
                     if transaction_detail_response.text[:12] == 'Name,Campus,':

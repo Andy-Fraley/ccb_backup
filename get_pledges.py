@@ -91,6 +91,7 @@ def main(argv):
         # Get list of pledged categories
         pledge_summary_response = http_session.post('https://' + ccb_subdomain + '.ccbchurch.com/report.php',
             data=pledge_summary_request)
+        pledge_summary_response.encoding = 'utf-8-sig'
         pledge_summary_succeeded = False
         if pledge_summary_response.status_code == 200:
             match_pledge_summary_info = re.search('COA Category', pledge_summary_response.text)
@@ -147,6 +148,7 @@ def main(argv):
                     pledge_detail_request['request'] = json.dumps(pledge_detail_report_info)
                     pledge_detail_response = http_session.post('https://' + ccb_subdomain + \
                         '.ccbchurch.com/report.php', data=pledge_detail_request)
+                    pledge_detail_response.encoding = 'utf-8-sig'
                     pledge_detail_succeeded = False
                     if pledge_detail_response.status_code == 200 and pledge_detail_response.text[:8] == 'Name(s),':
                         pledge_detail_succeeded = True
