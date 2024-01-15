@@ -59,7 +59,8 @@ def main(argv):
 
     if g.args.start_date is not None:
         start_date_str = g.args.start_date
-        datetime.datetime.strptime(start_date_str, '%m/%d/%Y')
+        start_date = datetime.datetime.strptime(start_date_str, '%Y%m%d')
+        start_date_str = start_date.strftime('%m/%d/%Y')
     elif g.args.all_time:
         start_date_str = '01/01/1990'
     else:
