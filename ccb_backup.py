@@ -174,7 +174,8 @@ def main(argv):
         os.remove(output_filename)
         print('Temp filename: ' + output_filename)
     else:
-        output_filename = './tmp/ccb_backup_' + datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
+        output_filename = os.path.dirname(os.path.abspath(__file__)) + '/tmp/ccb_backup_' + \
+            datetime.datetime.now().strftime('%Y%m%d%H%M%S') + '.zip'
     exec_zip_list = ['/usr/bin/zip', '-P', g.zip_file_password, '-j', '-r', output_filename, g.temp_directory + '/']
     message_info('Zipping data collection results files')
     exit_status = subprocess.call(exec_zip_list)
