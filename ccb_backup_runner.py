@@ -404,8 +404,13 @@ def do_backup(site_name, site_data, existing_backups):
 
     logging.info(f'Starting ccb_backup (tail ./backups/messages.log for status)')
     ccb_program_dir = os.path.dirname(os.path.abspath(__file__))
-    ccb_backup_string = ccb_program_dir + '/ccb_backup.py --output-filename ' + g.backups_dir_path + '/' + \
-        g.datetime_start_string + '.zip'
+    if os.path.isdir(ccb_program_dir + '/venv'):
+        ccb_backup_string = ccb_program_dir + '/venv/bin/python ' + ccb_program_dir + \
+            '/ccb_backup.py --output-filename ' + g.backups_dir_path + '/' + \
+            g.datetime_start_string + '.zip'
+    else:
+        ccb_backup_string = ccb_program_dir + '/ccb_backup.py --output-filename ' + g.backups_dir_path + '/' + \
+            g.datetime_start_string + '.zip'
     logging.debug(f"Executing '{ccb_backup_string}'")
     try:
         with open(ccb_program_dir + '/backups/messages.log', 'a') as message_file:
