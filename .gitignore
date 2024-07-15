@@ -4,10 +4,14 @@ ccb_backup.ini
 README.txt
 venv_3_9_9
 .DS_Store
+vault.yml
 
 # Any files in local tmp directory
 tmp/
 bak/
+backups/
+backups_bak/
+tmp_x/
 
 #######################################################################################################################
 # Generic Python .gitignore's below

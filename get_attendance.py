@@ -192,7 +192,6 @@ def main(argv):
             header_row = True
             for row in csv_reader:
                 if header_row:
-                    print(row)
                     header_row = False
                     output_csv_header = row
                     event_name_column_index = row.index('Event Name')
