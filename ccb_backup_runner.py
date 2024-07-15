@@ -402,15 +402,14 @@ def do_backup(site_name, site_data, existing_backups):
     if not os.path.isdir(g.backups_dir_path):
         os.mkdir(g.backups_dir_path)
 
-    logging.info(f'Starting ccb_backup')
+    logging.info(f'Starting ccb_backup (tail ./backups/messages.log for status)')
     ccb_program_dir = os.path.dirname(os.path.abspath(__file__))
     ccb_backup_string = ccb_program_dir + '/ccb_backup.py --output-filename ' + g.backups_dir_path + '/' + \
-        g.datetime_start_string + '.zip' # ' --message-output-filename ' + g.backups_dir_path + '/messages.log'
+        g.datetime_start_string + '.zip'
     logging.debug(f"Executing '{ccb_backup_string}'")
     try:
-        #exec_output = subprocess.check_output(ccb_backup_string, stderr=subprocess.STDOUT, shell=True). \
-        #    decode(sys.stdout.encoding)
-        subprocess.run(ccb_backup_string, shell=True)
+        with open(ccb_program_dir + '/backups/messages.log', 'a') as message_file:
+            subprocess.run(ccb_backup_string, shell=True, stderr=message_file, stdout=message_file)
     except subprocess.CalledProcessError as e:
         logging.error('ccb_backup.py exited with error status ' + str(e.returncode) + ' and error: ' + e.output)
     logging.info(f'Completed execution of ccb_backup.py to pull backup fileset out of CCB')
