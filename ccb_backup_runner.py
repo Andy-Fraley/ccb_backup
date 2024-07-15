@@ -120,6 +120,10 @@ def process(
     logging_formatter = logging.Formatter('%(asctime)s %(levelname)s\t%(message)s', '%Y-%m-%d %H:%M:%S')
 
     # Log into central messages files in the backups directory
+    if not os.isdir(g.backups_dir_path):
+        os.mkdir(g.backups_dir_path)
+    if not os.isfile(g.backups_dir_path + '/messages.log'):
+        Path(g.backups_dir_path + '/messages.log').touch()
     file_handler = logging.handlers.RotatingFileHandler(g.backups_dir_path + '/messages.log', maxBytes=10000000, \
         backupCount=1)
     file_handler.setLevel(logging.DEBUG) # Into log files, write everything including DEBUG messages
