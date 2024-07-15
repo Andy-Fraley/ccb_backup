@@ -149,13 +149,18 @@ def process(
         vault_file_path = vault_file
     else:
         vault_file_path = os.path.dirname(os.path.abspath(__file__)) + '/vault.yml'
+
     if use_keyring:
         vault_password = keyring.get_password('backup_siteground', 'default')
         if not vault_password:
             logging.error('Use ./specify_vault_password.py to set password if you intend to use keyring')
             exit(1)
+    elif os.path.isfile(program_path + '/.y4zwCKnyBvoPevYX'):
+        with open(program_path + '/.y4zwCKnyBvoPevYX', 'r') as f:
+            vault_password = f.readline().strip()
     else:
         vault_password = getpass.getpass('Password for vault.yml: ')
+
     vault = Vault(vault_password)
     vault_file = 'vault.yml'
     vault_data = vault.load(open(vault_file).read())
