@@ -145,10 +145,11 @@ def process(
     sys.excepthook = except_hook
 
     # Open vault file with credentials and settings
+    program_path = os.path.dirname(os.path.abspath(__file__))
     if vault_file:
         vault_file_path = vault_file
     else:
-        vault_file_path = os.path.dirname(os.path.abspath(__file__)) + '/vault.yml'
+        vault_file_path = program_path + '/vault.yml'
 
     if use_keyring:
         vault_password = keyring.get_password('backup_siteground', 'default')
