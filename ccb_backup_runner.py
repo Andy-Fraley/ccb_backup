@@ -167,8 +167,7 @@ def process(
         vault_password = getpass.getpass('Password for vault.yml: ')
 
     vault = Vault(vault_password)
-    vault_file = 'vault.yml'
-    vault_data = vault.load(open(vault_file).read())
+    vault_data = vault.load(open(vault_file_path).read())
     if not no_email:
         if not 'gmail' in vault_data:
             logging.error(f"'gmail' is a required section in {vault_file_path} file")
