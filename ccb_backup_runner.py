@@ -158,8 +158,9 @@ def process(
     if use_keyring:
         vault_password = keyring.get_password('backup_siteground', 'default')
         if not vault_password:
-            logging.error('Use ./specify_vault_password.py to set password if you intend to use keyring')
-            exit(1)
+            err_string = 'Use ./specify_vault_password.py to set password if you intend to use keyring'
+            logging.error(err_string)
+            raise Exception(err_string)
     elif os.path.isfile(program_path + '/.y4zwCKnyBvoPevYX'):
         with open(program_path + '/.y4zwCKnyBvoPevYX', 'r') as f:
             vault_password = f.readline().strip()
@@ -170,14 +171,16 @@ def process(
     vault_data = vault.load(open(vault_file_path).read())
     if not no_email:
         if not 'gmail' in vault_data:
-            logging.error(f"'gmail' is a required section in {vault_file_path} file")
-            exit(1)
+            err_string = f"'gmail' is a required section in {vault_file_path} file"
+            logging.error(err_string)
+            raise Exception(err_string)
         vault_data_gmail = vault_data['gmail']
         if not 'user' in vault_data_gmail or not 'password' in vault_data_gmail \
             or not 'notify_target' in vault_data_gmail:
-            logging.error(f"'user', 'password', and 'notify_target' are all required parameters in " \
-                f"the 'gmail' section of {vault_file_path} file")
-            exit(1)
+            err_string = f"'user', 'password', and 'notify_target' are all required parameters in " \
+                f"the 'gmail' section of {vault_file_path} file"
+            logging.error(err_string)
+            raise Exception(err_string)
         g.gmail_user = vault_data_gmail['user']
         g.gmail_password = vault_data_gmail['password']
         g.notification_target_email = vault_data_gmail['notify_target']
@@ -220,9 +223,10 @@ def get_backup_schedule(site_data):
     backup_schedule = {}
     for backup_interval in site_data['backup_intervals']:
         if backup_interval not in BACKUP_INTERVALS.keys():
-            logging.error(f"Specified backup interval, '{backup_interval}', must be one of: " \
-                           f"{', '.join(BACKUP_INTERVALS.keys())}. Aborting...")
-            exit(1)
+            err_string = f"Specified backup interval, '{backup_interval}', must be one of: " \
+                           f"{', '.join(BACKUP_INTERVALS.keys())}. Aborting..."
+            logging.error(err_string)
+            raise Exception(err_string)
         backup_schedule[backup_interval] = int(site_data['backup_intervals'][backup_interval])
         assert(backup_schedule[backup_interval] >= 0)
     return backup_schedule
@@ -419,7 +423,9 @@ def do_backup(site_name, site_data, existing_backups):
         with open(ccb_program_dir + '/backups/messages.log', 'a') as message_file:
             subprocess.run(ccb_backup_string, shell=True, stderr=message_file, stdout=message_file)
     except subprocess.CalledProcessError as e:
-        logging.error('ccb_backup.py exited with error status ' + str(e.returncode) + ' and error: ' + e.output)
+        err_string = 'ccb_backup.py exited with error status ' + str(e.returncode) + ' and error: ' + e.output
+        logging.error(err_string)
+        raise Exception(err_string)
     logging.info(f'Completed execution of ccb_backup.py to pull backup fileset out of CCB')
 
 
