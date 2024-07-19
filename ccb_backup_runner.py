@@ -325,11 +325,11 @@ def do_backup_if_time(site_name, site_data, backup_schedule):
                     f'{g.datetime_start - most_recent_backup_datetime}')
                 if g.datetime_start - most_recent_backup_datetime > BACKUP_INTERVALS[backup_interval]:
                     logging.info(f'Doing new backup for site {site_name} on {backup_interval} schedule')
-                    backups_tracker_new[backup_interval] = [g.datetime_start_string] + '.zip'
+                    backups_tracker_new[backup_interval] = [g.datetime_start_string + '.zip']
                     do_new_backup = True
             else:
                 # New interval was added to backup schedule and there are no historical backups for that interval
-                backups_tracker_new[backup_interval] = [g.datetime_start_string] + '.zip'
+                backups_tracker_new[backup_interval] = [g.datetime_start_string + '.zip']
                 do_new_backup = True
 
     # Actually do the CCB backup
