@@ -211,8 +211,8 @@ def process(
 
 class EmailFilter(logging.Filter):
     def filter(self, record):
-        if 'Completed backup' in record.msg or 'Size of backups' in record.msg or record.levelname == 'ERROR' \
-           or record.levelname == 'CRITICAL':
+        if 'Completed backup' in record.msg or 'Size of backups' in record.msg 'No backups to do' in record.msg \
+           or record.levelname == 'ERROR' or record.levelname == 'CRITICAL':
             return True
         else:
             return False
