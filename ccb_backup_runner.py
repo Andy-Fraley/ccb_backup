@@ -21,10 +21,10 @@ from pathlib import Path
 import shutil
 import subprocess
 import getpass
-import keyring
 import sys
 import io
 import smtplib
+import errno
 
 
 app = typer.Typer()
@@ -75,23 +75,12 @@ class g:
 
 @app.command()
 def process(
-        backups_dir: Annotated[Optional[Path], typer.Option("--backups-dir", exists=True, dir_okay=True,
-            file_okay=False, writable=True, resolve_path=True, help="Target directory for backups. If not " \
+        backups_dir: Annotated[str, typer.Option("--backups-dir", help="Target directory for backups. If not " \
             "specified, defaults to ./backups directory in the same folder as this backups_siteground.py " \
             "utility.")] = None,
-        vault_file: Annotated[Optional[Path], typer.Option("--vault-file", exists=True, file_okay=True, dir_okay=False,
-            readable=True, resolve_path=True, help="Credentials and settings vault file which is an encrypted " \
-            "ansible vault file. If not specified, defaults to ./vault.yml file in the same directory as this " \
-            "backups_siteground.py utility.")] = None,
-        use_keyring: Annotated[bool, typer.Option("--use-keyring", help="Using machine keyring to store the vault " \
-            "credentials file password is useful for running this utility using cron without leaking the " \
-            "credentials file password by storing it in a script or in a file. If this option is specified, then " \
-            "the keyring value ccb_backup_runner:vault_password is used as a password for the credentials vault " \
-            "file (defaults to vault.yml). In addition, two simple utilities are are provided to set and clear " \
-            "the vault password in the keyring on this machine. Use specify_vault_password.py to " \
-            "store vault.yml password in keyring on this machine. And use clear_vault_password.py to clear " \
-            "any stored vault password on this machine.  If you do not use this option, then you will be " \
-            "prompted for the password on command line.")] = False,
+        vault_file: Annotated[str, typer.Option("--vault-file", help="Credentials and settings vault file which is " \
+            "an encrypted ansible vault file. If not specified, defaults to ./vault.yml file in the same directory " \
+            "as this backups_siteground.py utility.")] = None,
         no_email: Annotated[bool, typer.Option("--no-email", help="If specified, then notification emails are " \
             "not sent.")] = False,
         logging_level: Annotated[
@@ -119,17 +108,6 @@ def process(
     root_logger.setLevel(logging.NOTSET) # Ensure EVERYTHING is logged thru root logger (don't block anything there)
     logging_formatter = logging.Formatter('%(asctime)s %(levelname)s\t%(message)s', '%Y-%m-%d %H:%M:%S')
 
-    # Log into central messages files in the backups directory
-    if not os.path.isdir(g.backups_dir_path):
-        os.mkdir(g.backups_dir_path)
-    if not os.path.isfile(g.backups_dir_path + '/messages.log'):
-        Path(g.backups_dir_path + '/messages.log').touch()
-    file_handler = logging.handlers.RotatingFileHandler(g.backups_dir_path + '/messages.log', maxBytes=10000000, \
-        backupCount=1)
-    file_handler.setLevel(logging.DEBUG) # Into log files, write everything including DEBUG messages
-    file_handler.setFormatter(logging_formatter)
-    root_logger.addHandler(file_handler)
-
     # Echo messages to console (stdout)
     console_handler = logging.StreamHandler()
     logging_level_numeric = getattr(logging, logging_level, None) # Allow user to specify level of logging on console
@@ -155,17 +133,16 @@ def process(
     else:
         vault_file_path = program_path + '/vault.yml'
 
-    if use_keyring:
-        vault_password = keyring.get_password('ccb_backup_runner', 'default')
-        if not vault_password:
-            err_string = 'Use ./specify_vault_password.py to set password if you intend to use keyring'
-            logging.error(err_string)
-            raise Exception(err_string)
-    elif os.path.isfile(program_path + '/.y4zwCKnyBvoPevYX'):
+    # Use 'hidden' file for vault password if exists, else prompt user for vault file password
+    if os.path.isfile(program_path + '/.y4zwCKnyBvoPevYX'):
         with open(program_path + '/.y4zwCKnyBvoPevYX', 'r') as f:
             vault_password = f.readline().strip()
     else:
         vault_password = getpass.getpass('Password for vault.yml: ')
+
+    # Ensure vault file exists
+    if not os.path.isfile(vault_file_path):
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), vault_file_path)
 
     vault = Vault(vault_password)
     vault_data = vault.load(open(vault_file_path).read())
@@ -184,6 +161,17 @@ def process(
         g.gmail_user = vault_data_gmail['user']
         g.gmail_password = vault_data_gmail['password']
         g.notification_target_email = vault_data_gmail['notify_target']
+
+    # Log to central messages files in the backups directory
+    if not os.path.isdir(g.backups_dir_path):
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), g.backups_dir_path)
+    if not os.path.isfile(g.backups_dir_path + '/messages.log'):
+        Path(g.backups_dir_path + '/messages.log').touch()
+    file_handler = logging.handlers.RotatingFileHandler(g.backups_dir_path + '/messages.log', maxBytes=10000000, \
+        backupCount=1)
+    file_handler.setLevel(logging.DEBUG) # Into log files, write everything including DEBUG messages
+    file_handler.setFormatter(logging_formatter)
+    root_logger.addHandler(file_handler)
 
     # Now, do the backups (if enough time has transpired that a new backup is required per site backup schedules)
     g.did_a_backup = False
