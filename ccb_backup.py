@@ -139,15 +139,14 @@ def main(argv):
             message_info('Backup plan details: ' + str(backups_to_do))
             util.sys_exit(0)
 
-    # See if there are backups to do
-    backups_to_do = get_backups_to_do()
-
     # If we're posting to S3 and deleting the ZIP file, then utility has been run only for purpose of
     # posting to S3. See if there are posts to be done and exit if not
-    if g.args.post_to_s3 and g.args.delete_zip and backups_to_do is None:
-        message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
-        util.sys_exit(0)
-
+    backups_to_do = None
+    if g.args.post_to_s3:
+        backups_to_do = get_backups_to_do()
+        if g.args.delete_zip and backups_to_do is None:
+            message_info('Backups in S3 are already up-to-date. Nothing to do. Exiting!')
+            util.sys_exit(0)
 
     # If user specified a directory with set of already-created get_*.py utilities output files to use, then
     # do not run get_*.py data collection utilities, just use that
